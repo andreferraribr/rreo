@@ -1,0 +1,164 @@
+---
+title: "anexo_1_BO"
+output: html_document
+---
+
+
+```{r libraries, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(tidyverse)
+library(readxl)
+library(DT)
+library(plotly)
+library(lubridate)
+```
+
+```{r}
+Sys.setlocale(category = "LC_TIME", locale = "pt_BR")
+```
+
+
+
+```{r, importar df_limites}
+# dados originados a partir de rreo_rgf_uf.Rmd
+# rotina criada para extrair RREO e RGF do SICONFI API http://apidatalake.tesouro.gov.br/docs/siconfi
+
+# importar df com os dados e classicar por ordem crescente de UF
+saude <- read_excel("saude.xlsx")
+
+saude <- saude %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE, locale  = "pt_BR"), ano = year(date))
+
+saude <- saude %>% mutate(cores = if_else(percentual>100,"red","blue"))
+
+```
+
+```{r, funcao plot_df}
+# orientações interessantes na publicação do Colin Fay, Vincent Guyader, Cervan Girard, Sébastien Rochette
+# https://thinkr-open.github.io/building-shiny-apps-workflow/structure.html#a-practical-walk-through
+
+# criar função para plotar os gráficos
+# argumento df para dataframe
+# argumento corte para linha horizontal dividindo valores considerados bons (azul) e ruins (vermelhos)
+plot_df = function(df,corte){
+  p <- ggplot(df, aes(x=mes, y=percentual, color = cores)) +
+  # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+  # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+    geom_jitter( data = df %>% filter (ano != max(ano)), aes(text=paste("ANO: ", ano)), width=0.25, alpha=0.5) +
+  # plotar o point da UF selecionada
+    geom_point(data = df %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano), size = 10))+
+  # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+    geom_line(data = df %>% filter (ano == max(ano) ),  inherit.aes =TRUE, aes(x=mes, y=percentual))+
+  # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+    geom_hline(yintercept=corte, colour = "red", linetype = "dashed") +
+  # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+  # inherit.aes =FALSE para evitar duas linhas de tendência.
+  # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+  # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+    geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+    # definir informação dos eixos
+    labs( x = "mês",
+          y = "%")+ theme_classic()+ 
+  # escala de cor. Os levels são definidos na coluna cores da df_limites.
+    scale_color_manual(breaks = levels(df$cores),
+                        values=c("red", "blue"))
+  # optei por esconder a legenda (showlegend = FALSE)
+(p <- ggplotly(p))%>% layout(showlegend = FALSE)
+}
+
+```
+
+```{r}
+
+atual <- saude %>% filter(year(date)== max(year(date))) 
+ggplot(saude, aes(x=mes, y=percentual, colour = year(date))) +
+  geom_jitter()+
+  # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+    geom_hline(yintercept=1, colour = "blue", linetype = "dashed")+
+ 
+  # adicionar reta de ajuste de um modelo linear
+  geom_smooth(method = "lm")
+
+
+
+ ggplot(atual, aes(as.Date(date), percentual))+
+  geom_line()
+   # scale_x_date(month(as.Date(atual$date)))
+  
+```
+
+```{r}
+ library(readr)
+anexo_1_ate_o_mes <- read_csv("anexo_1_ate_o_mes.csv", 
+    locale = locale(decimal_mark = ","), 
+    skip = 5)
+View(anexo_1_ate_o_mes)
+```
+```{r}
+plot_df(saude,100)
+```
+
+```{r}
+  p <- ggplot(saude, aes(x=mes, y=percentual, color = cores)) +
+  # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+  # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+    geom_jitter( data = saude %>% filter (ano != max(ano)), aes(text=paste("ANO: ", ano)), width=0.1, alpha=0.25) +
+  # plotar o point da UF selecionada
+    geom_point(data = saude %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano), size = 10))+
+  # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+    geom_line(data = saude %>% filter (ano == max(ano) ),  inherit.aes =TRUE, aes(x=mes, y=percentual))+
+  # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+    geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+  # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+  # inherit.aes =FALSE para evitar duas linhas de tendência.
+  # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+  # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+    geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+    # definir informação dos eixos
+    labs( x = "mês",
+          y = "%")+ theme_classic()+ 
+  # escala de cor. Os levels são definidos na coluna cores da df_limites.
+    scale_color_manual(breaks = levels(saude$cores),
+                        values=c("red", "blue"))
+  # optei por esconder a legenda (showlegend = FALSE)
+(p <- ggplotly(p))%>% layout(showlegend = FALSE)
+```
+
+```{r}
+ggplot(saude %>% filter (ano ==2021), aes(y = percentual)) + 
+  geom_point(aes(x = mes), colour = "red") + 
+  geom_line(aes(x = mes), colour = "red") + 
+  geom_line(aes(x = month(as.Date(date))), colour = "blue") 
+  # geom_line(aes(x = mes), colour = "blue")
+```
+
+```{r}
+p <- ggplot(saude, aes(y=percentual, color = cores)) +
+  # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+  # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+    geom_jitter( data = saude %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2) +
+  # plotar o point da UF selecionada
+    geom_point(data = saude %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano)))+
+  
+  # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+    geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+  # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+  # inherit.aes =FALSE para evitar duas linhas de tendência.
+  # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+  # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+    geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+  # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+    geom_line(data = saude %>% filter (ano == max(ano) ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual))+ 
+  
+   # definir informação dos eixos
+    labs( x = "mês",
+          y = "%")+ theme_classic()+ 
+  # escala de cor. Os levels são definidos na coluna cores da df_limites.
+    scale_color_manual(breaks = levels(saude$cores),
+                        values=c("red", "blue"))+
+  ggtitle("Percentual mínimo de despesa com Saúde")+
+  # optei por esconder a legenda (showlegend = FALSE)
+geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+2.5, label = ano))
+(p <- ggplotly(p))%>% layout(showlegend = FALSE)
+```
+
