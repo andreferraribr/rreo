@@ -1,10 +1,20 @@
 ---
 title: "anexo_1_BO"
-output: html_document
+output:
+  pdf_document: default
+  code_folding: hide
+  html_document:
+    df_print: paged
+  word_document: default
+ 
 ---
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+```
 
 
-```{r libraries, include=FALSE}
+```{r libraries, echo=FALSE}
 library(flexdashboard)
 library(shiny)
 library(tidyverse)
@@ -15,25 +25,25 @@ library(lubridate)
 ```
 
 ```{r}
-Sys.setlocale(category = "LC_TIME", locale = "pt_BR")
+# Sys.setlocale(category = "LC_TIME", locale = "pt_BR")
 ```
 
 
 
-```{r, importar df_limites}
+```{r echo=FALSE}
 # dados originados a partir de rreo_rgf_uf.Rmd
 # rotina criada para extrair RREO e RGF do SICONFI API http://apidatalake.tesouro.gov.br/docs/siconfi
 
 # importar df com os dados e classicar por ordem crescente de UF
 saude <- read_excel("saude.xlsx")
 
-saude <- saude %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE, locale  = "pt_BR"), ano = year(date))
+saude <- saude %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
 
 saude <- saude %>% mutate(cores = if_else(percentual>100,"red","blue"))
 
 ```
 
-```{r, funcao plot_df}
+```{r echo=FALSE}
 # orientações interessantes na publicação do Colin Fay, Vincent Guyader, Cervan Girard, Sébastien Rochette
 # https://thinkr-open.github.io/building-shiny-apps-workflow/structure.html#a-practical-walk-through
 
@@ -68,7 +78,7 @@ plot_df = function(df,corte){
 
 ```
 
-```{r}
+```{r echo=FALSE}
 
 atual <- saude %>% filter(year(date)== max(year(date))) 
 ggplot(saude, aes(x=mes, y=percentual, colour = year(date))) +
@@ -94,7 +104,7 @@ anexo_1_ate_o_mes <- read_csv("anexo_1_ate_o_mes.csv",
     skip = 5)
 View(anexo_1_ate_o_mes)
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 plot_df(saude,100)
 ```
 
@@ -121,7 +131,7 @@ plot_df(saude,100)
     scale_color_manual(breaks = levels(saude$cores),
                         values=c("red", "blue"))
   # optei por esconder a legenda (showlegend = FALSE)
-(p <- ggplotly(p))%>% layout(showlegend = FALSE)
+# (p <- ggplotly(p))%>% layout(showlegend = FALSE)
 ```
 
 ```{r}
@@ -159,6 +169,12 @@ p <- ggplot(saude, aes(y=percentual, color = cores)) +
   ggtitle("Percentual mínimo de despesa com Saúde")+
   # optei por esconder a legenda (showlegend = FALSE)
 geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+2.5, label = ano))
-(p <- ggplotly(p))%>% layout(showlegend = FALSE)
+# (p <- ggplotly(p))%>% layout(showlegend = FALSE)
+p
+```
+```{r eval=FALSE, include=FALSE}
+previ <- read_excel("previ.xlsx")
+
+previ <- mutate(resultado = startsWith("Movimento Receita")- startsWith("Moviemtno Despesa"))
 ```
 
