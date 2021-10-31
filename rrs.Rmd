@@ -1,12 +1,12 @@
 ---
 title: "anexo_1_BO"
 output:
-  pdf_document: default
-  code_folding: hide
   html_document:
     df_print: paged
+  reference_docx: rss_style.docx
+  code_folding: hide
   word_document: default
- 
+  pdf_document: default
 ---
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -172,9 +172,20 @@ geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+2
 # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
 p
 ```
-```{r eval=FALSE, include=FALSE}
+```{r echo=FALSE}
 previ <- read_excel("previ.xlsx")
 
-previ <- mutate(resultado = startsWith("Movimento Receita")- startsWith("Moviemtno Despesa"))
+names(previ)[1] <- "date"
+
+previ <- previ %>% mutate (receita =rowSums( previ[,startsWith(names(previ),"Movimento R")]), despesa  =rowSums( previ[,startsWith(names(previ),"Movimento D")]), resultado = receita - despesa)
+datatable(previ)
+
+```
+
+```{r}
+ggplot(previ , aes(x = (as.Date(date)),y = resultado)) + 
+  geom_line(aes( colour = "blue"))+
+   geom_smooth(method = "loess", color = "red") 
+  # geom_line(aes(x = mes), colour = "blue")
 ```
 
