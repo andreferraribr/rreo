@@ -218,4 +218,72 @@ ggplot(rcl , aes(x = (as.Date(item)),y = acumulado)) +
 # 
 # rcl %>% filter(startsWith(item,"RECEITA")) %>% pivot_longer(cols = everything())
 ```
+```{r}
+educacao <- read_excel("educacao.xlsx")
+
+educacao <- educacao %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
+
+educacao <- educacao %>% mutate(cores = if_else(percentual>100,"red","blue"))
+
+p <- ggplot(educacao, aes(y=percentual, color = cores)) +
+  # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+  # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+    geom_jitter( data = educacao %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2) +
+  # plotar o point da UF selecionada
+    geom_point(data = educacao %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano)))+
+  
+  # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+    geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+  # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+  # inherit.aes =FALSE para evitar duas linhas de tendência.
+  # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+  # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+    geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+  # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+    geom_line(data = educacao %>% filter (ano == max(ano) ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual))+ 
+  
+   # definir informação dos eixos
+    labs( x = "mês",
+          y = "%")+ theme_classic()+ 
+  # escala de cor. Os levels são definidos na coluna cores da df_limites.
+    scale_color_manual(breaks = levels(educacao$cores),
+                        values=c("red", "blue"))+
+  ggtitle("Percentual mínimo de despesa com Educacao")+
+  # optei por esconder a legenda (showlegend = FALSE)
+geom_text(data = educacao %>% filter (date == max(date)), aes(x=mes, y=percentual+2.5, label = ano))
+# (p <- ggplotly(p))%>% layout(showlegend = FALSE)
+p
+
+```
+```{r}
+
+# https://dominicroye.github.io/en/2019/import-excel-sheets-with-r/
+
+read_excel("Receita_Contribuicao.xlsx")
+
+path <- "Receita_Contribuicao.xlsx"
+
+path %>%
+  excel_sheets()
+
+path <- "Receita_Contribuicao.xlsx"
+Receita_Contribuicao <- path %>%
+        excel_sheets() %>%
+        set_names() %>%
+       map_df(read_excel,
+           path = path,skip = 8,
+           .id = "ano")
+
+Receita_Contribuicao <- Receita_Contribuicao[ ,1:15]
+
+names(Receita_Contribuicao)[2] <- "receita"
+
+Receita_Contribuicao <- Receita_Contribuicao %>%  pivot_longer(where(is.double), names_to = "mes", values_to = "valor")
+
+Receita_Contribuicao <- left_join(Receita_Contribuicao, meses) %>% mutate(data = paste0(ano,"-",mes_cod,"-01"))
+
+ggplot(Receita_Contribuicao %>% filter(ano > 2004), aes(fill = receita, y = valor, x = as.Date(data)))+ 
+    geom_area()+ theme(legend.position = "none")
+
+```
 
