@@ -282,8 +282,35 @@ Receita_Contribuicao <- Receita_Contribuicao %>%  pivot_longer(where(is.double),
 
 Receita_Contribuicao <- left_join(Receita_Contribuicao, meses) %>% mutate(data = paste0(ano,"-",mes_cod,"-01"))
 
-ggplot(Receita_Contribuicao %>% filter(ano > 2004), aes(fill = receita, y = valor, x = as.Date(data)))+ 
-    geom_area()+ theme(legend.position = "none")
 
+
+```
+
+```{r}
+primario <- read_excel("primario.xlsx")
+
+names(primario)[1] <- "mes"
+
+primario <- primario %>%  pivot_longer(!mes, names_to = "item", values_to = "valor")
+
+
+primario <- primario %>% cbind( str_split_fixed(primario$item," ",2))
+
+names(primario)[4] <- "rec_cod"
+names(primario)[5] <- "rec_nome"
+# 
+# ggplot(primario %>% filter(startsWith (item,"10")), aes(fill = item, y = valor, x = as.Date(mes)))+ 
+#     geom_area()+ theme(legend.position = "none")
+
+# Change area plot fill colors by groups
+ggplot(primario %>% filter(rec_cod %in% c("3.","4.")), aes(y = valor,x=mes, fill=item)) +
+  geom_area( alpha=0.6)
+
+```
+
+```{r}
+teste <- primario  %>% group_by(rec_nome,mes) %>% summarise(valor = sum(valor))
+
+( pivot_wider(teste, names_from = "rec_nome", values_from = valor))
 ```
 
