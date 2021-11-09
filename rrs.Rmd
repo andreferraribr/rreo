@@ -7,6 +7,8 @@ output:
   code_folding: hide
   word_document: default
   pdf_document: default
+  fig_width: 8 
+fig_height: 4
 ---
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -179,6 +181,9 @@ previ <- read_excel("previ.xlsx")
 names(previ)[1] <- "date"
 
 previ <- previ %>% mutate (receita =rowSums( previ[,startsWith(names(previ),"Movimento R")]), despesa  =rowSums( previ[,startsWith(names(previ),"Movimento D")]), resultado = receita - despesa)
+
+previ2 <- previ  %>% select(ends_with("Meses"))
+
 datatable(previ)
 # https://itsalocke.com/blog/understanding-rolling-calculations-in-r/
 previ <- previ %>% mutate(acumulado = roll_sum(resultado,12, fill=NA, align="right")/1000000000)
@@ -189,20 +194,23 @@ previ <- previ %>% mutate(acumulado = roll_sum(resultado,12, fill=NA, align="rig
 
 
 ggplot(previ , aes(x = (as.Date(date)),y = resultado)) + 
-  geom_line(aes( colour = "blue"))+
-   geom_smooth(method = "loess", color = "red") 
+  geom_line(aes( ))+
+   geom_smooth(method = "loess", color = "red") +
+  ggtitle("Resultado Previdenciário")
   # geom_line(aes(x = mes), colour = "blue")
 ```
 ```{r}
 # https://itsalocke.com/blog/understanding-rolling-calculations-in-r/
 ggplot(previ , aes(x = (as.Date(date)),y = acumulado)) + 
-  geom_line(aes( colour = "blue"))
+  geom_line(aes( ))+
+  ggtitle("Resultado Previdenciário acumulado nos últimos 12 meses")+
+   geom_text(data = previ%>% filter (date == max(date)), aes(x=as.Date(date), y=acumulado+30,label=paste("R$", round(acumulado,0))))
    # geom_smooth(method = "loess", color = "red") 
 ```
 
 
 
-```{r}
+```{r,fig.width = 10, fig.height= 4}
 rcl <- read_excel("rcl.xlsx")
 
 rcl <- rcl %>% mutate(acumulado = roll_sum(`RECEITA CORRENTE LÍQUIDA (III) = (I - II)`,12, fill=NA, align="right")/1000000)
@@ -211,8 +219,17 @@ library(zoo)
 
 
 ggplot(rcl , aes(x = (as.Date(item)),y = acumulado)) + 
-  geom_line(aes( colour = "blue"))
-
+  geom_line()+
+  # plotar o point da UF selecionada
+    geom_text(data = rcl%>% filter (item == max(item)), aes(x=as.Date(item), y=acumulado+10,label=paste("R$", round(acumulado,0))))+
+  
+  ggtitle(paste0("Receita Corrente Líquida em R$ Bilhões nominais (posição: ",(month(max(as.Date(rcl$item)))), "/",(year(max(as.Date(rcl$item)))),")" ))+
+    theme_classic() +
+    ylab("") +
+    xlab("") +
+    theme(axis.text.x = element_text(size=8),
+          axis.text.y = element_text(size=8),
+          legend.position = "none")
 # 
 # names(rcl) <- c("item",teste)
 # 
@@ -309,8 +326,20 @@ ggplot(primario %>% filter(rec_cod %in% c("3.","4.")), aes(y = valor,x=mes, fill
 ```
 
 ```{r}
-teste <- primario  %>% group_by(rec_nome,mes) %>% summarise(valor = sum(valor))
+teste <- primario  %>% filter(rec_cod %in% c("3.","4.")) %>%  group_by(rec_nome,mes) %>% summarise(valor = sum(valor))
 
-( pivot_wider(teste, names_from = "rec_nome", values_from = valor))
+teste <- ( pivot_wider(teste, names_from = "rec_nome", values_from = valor) )
+
+teste <- teste %>% mutate(resultado =teste$`RECEITA LÍQUIDA  (1-2)`-teste$`DESPESA TOTAL 2/` )
+
+teste <- teste %>% as.data.frame( div(is.numeric, 1000000000))
+
+
+
+ggplot(teste, aes(x=mes)) +
+  # geom_area(aes(y = `RECEITA LÍQUIDA  (1-2)` ,alpha=0.6))+
+  # geom_area(aes(y = `DESPESA TOTAL 2/` ,alpha=0.6))+
+  geom_line(aes(y = resultado))+
+  ggtitle("Resultado Primário")
 ```
 
