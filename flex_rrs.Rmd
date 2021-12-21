@@ -1,0 +1,218 @@
+---
+title: "flex_rrs"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+   
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(bslib)
+library(tidyverse)
+library(readxl)
+library(DT)
+library(plotly)
+library(lubridate)
+library(RcppRoll)
+library(scales)
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+saude <- read_excel("saude.xlsx")
+
+saude <- saude %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
+
+saude <- saude %>% mutate(cores = if_else(percentual>100,"red","blue"))
+```
+
+
+Column 
+-----------------------------------------------------------------------
+
+### Articles per Day
+
+```{r}
+# articles <- computeArticles()
+valueBox(10, icon = "fa-pencil")
+```
+
+### Comments per Day
+
+```{r}
+# comments <- computeComments()
+valueBox(10, icon = "fa-comments")
+```
+
+### Spam per Day
+
+```{r}
+spam <- 30
+valueBox(spam, 
+         icon = "fa-trash",
+         color = ifelse(spam > 10, "warning", "primary"))
+```
+
+### Ano
+```{r}
+sliderInput("ano_saude", "ano", value =  year(max(saude$date)), min =  year(min(saude$date)), max = year(max(saude$date)))
+```
+
+
+Column 
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+# sliderInput("ano_saude", "ano", value =  year(max(saude$date)), min =  year(min(saude$date)), max = year(max(saude$date)))
+
+renderPlotly({
+  
+  
+   p <- ggplot(saude, aes(y=percentual, color = cores)) +
+            # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+            # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+            geom_jitter( data = saude %>% filter (ano != input$ano_saude), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2) +
+            # plotar o point da UF selecionada
+            geom_point(data = saude %>% filter (ano == input$ano_saude), aes(x=mes, y=percentual,text=paste("ANO: ", ano)), size = 2)+
+            
+            # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+            geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+            # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+            # inherit.aes =FALSE para evitar duas linhas de tendência.
+            # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+            # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+            # geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+            # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+            geom_line(data = saude %>% filter (ano == input$ano_saude ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual),size = 1, color = "gray")+ 
+            
+            # definir informação dos eixos
+            labs( x = "mês",
+                  y = "%")+ theme_classic()+ 
+            # escala de cor. Os levels são definidos na coluna cores da df_limites.
+            scale_color_manual(breaks = levels(saude$cores),
+                               values=c("red", "blue"))+
+            ggtitle("Percentual mínimo de despesa com Saúde")+
+            # optei por esconder a legenda (showlegend = FALSE)
+            geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = ano))
+        # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
+       ggplotly(p) 
+    })
+
+```
+
+
+### Chart AB
+
+```{r}
+# sliderInput("ano_saude", "ano", value =  year(max(saude$date)), min =  year(min(saude$date)), max = year(max(saude$date)))
+
+renderPlotly({
+  
+  
+   p <- ggplot(saude, aes(y=percentual, color = cores)) +
+            # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+            # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+            geom_jitter( data = saude %>% filter (ano != input$ano_saude), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2) +
+            # plotar o point da UF selecionada
+            geom_point(data = saude %>% filter (ano == input$ano_saude), aes(x=mes, y=percentual,text=paste("ANO: ", ano)), size = 2)+
+            
+            # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+            geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+            # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+            # inherit.aes =FALSE para evitar duas linhas de tendência.
+            # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+            # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+            # geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+            # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+            geom_line(data = saude %>% filter (ano == input$ano_saude ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual),size = 1, color = "gray")+ 
+            
+            # definir informação dos eixos
+            labs( x = "mês",
+                  y = "%")+ theme_classic()+ 
+            # escala de cor. Os levels são definidos na coluna cores da df_limites.
+            scale_color_manual(breaks = levels(saude$cores),
+                               values=c("red", "blue"))+
+            ggtitle("Percentual mínimo de despesa com Saúde")+
+            # optei por esconder a legenda (showlegend = FALSE)
+            geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = ano))
+        # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
+       ggplotly(p) 
+    })
+
+```
+
+
+
+
+
+### Chart AC
+
+```{r}
+# sliderInput("ano_saude", "ano", value =  year(max(saude$date)), min =  year(min(saude$date)), max = year(max(saude$date)))
+
+renderPlotly({
+  
+  
+   p <- ggplot(saude, aes(y=percentual, color = cores)) +
+            # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+            # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+            geom_jitter( data = saude %>% filter (ano != input$ano_saude), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2) +
+            # plotar o point da UF selecionada
+            geom_point(data = saude %>% filter (ano == input$ano_saude), aes(x=mes, y=percentual,text=paste("ANO: ", ano)), size = 2)+
+            
+            # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+            geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+            # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+            # inherit.aes =FALSE para evitar duas linhas de tendência.
+            # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+            # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+            # geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+            # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+            geom_line(data = saude %>% filter (ano == input$ano_saude ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual),size = 1, color = "gray")+ 
+            
+            # definir informação dos eixos
+            labs( x = "mês",
+                  y = "%")+ theme_classic()+ 
+            # escala de cor. Os levels são definidos na coluna cores da df_limites.
+            scale_color_manual(breaks = levels(saude$cores),
+                               values=c("red", "blue"))+
+            ggtitle("Percentual mínimo de despesa com Saúde")+
+            # optei por esconder a legenda (showlegend = FALSE)
+            geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = ano))
+        # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
+       ggplotly(p) 
+    })
+
+```
+
+
+Column 
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
+
+### Chart D
+
+```{r}
+
+```

@@ -1,0 +1,66 @@
+---
+title: "tesouRo_tRanspaRente"
+output: html_document
+---
+
+```{r}
+#install the packages if necessary
+if(!require("tidyverse")) install.packages("tidyverse")
+if(!require("fs")) install.packages("fs")
+if(!require("readxl")) install.packages("readxl")
+
+
+#load packages
+library(tidyverse)
+library(fs)
+library(readxl)
+```
+
+```{r}
+
+# https://dominicroye.github.io/en/2019/import-excel-sheets-with-r/
+
+
+path <- "RCL.xlsx"
+
+path %>%
+  excel_sheets()
+```
+
+```{r}
+RCL <- "RCL.xlsx" %>%
+        excel_sheets() %>%
+        set_names() %>%
+       map_df(read_excel,
+           path = "RCL.xlsx",
+           .id = "ano")
+str(RCL)
+```
+```{r}
+RCL <- path%>%
+        excel_sheets() %>%
+        set_names() %>%
+       map_df(read_excel,skip = 11,
+           path = path,
+           .id = "ano")
+
+
+names(RCL)[2] <- "item"
+
+
+
+RCL <- RCL %>% pivot_longer( c("OUT" , "NOV" , "DEZ",  "JAN" , "FEV" , "MAR"  ,"ABR" , "MAI" , "JUN"  ,"JUL" , "AGO" , "SET" ),names_to = "mes", values_to = "saldo")
+
+```
+
+
+```{r}
+RCL <- path%>%
+        excel_sheets() %>%
+        set_names() %>%
+       map_df(read_excel,skip = 11 %>% str_sub(colnames(path),start = 1L, end= 3L),
+           path = path,
+           .id = "ano")
+
+```
+

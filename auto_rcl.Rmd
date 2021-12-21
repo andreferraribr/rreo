@@ -1,0 +1,67 @@
+---
+title: "auto_rcl"
+output: html_document
+---
+
+```{r}
+library(flexdashboard)
+library(bslib)
+library(tidyverse)
+library(readxl)
+library(DT)
+library(plotly)
+library(lubridate)
+library(RcppRoll)
+library(scales)
+
+
+```
+```{r}
+## write to working directory
+library(openxlsx)
+write.xlsx(iris, file = "writeXLSX1.xlsx",overwrite = TRUE)
+write.xlsx(iris, file = "writeXLSXTable1.xlsx", asTable = TRUE,overwrite = TRUE)
+```
+
+```{r}
+## write a list of data.frames to individual worksheets using list names as worksheet names
+l <- list("IRIS" = iris, "MTCARS" = mtcars)
+write.xlsx(l, file = "writeXLSX2.xlsx",overwrite = TRUE)
+write.xlsx(l, file = "writeXLSXTable2.xlsx", asTable = TRUE,overwrite = TRUE)
+```
+
+```{r}
+require(ggplot2)
+
+
+wb <- loadWorkbook("auto_rcl.xlsx")
+writeData(wb, sheet = "anexo", atual %>% select(-`Anexo 3 - Linhas - 2021`), startCol = 4, startRow = 11, colNames = F)
+saveWorkbook(wb,"Revenue.xlsx",overwrite = T)
+```
+
+
+
+```{r}
+addWorksheet(wb, sheetName = "Motor Trend Car Road Tests", gridLines = FALSE)
+addWorksheet(wb, sheetName = "Iris", gridLines = FALSE)
+```
+
+```{r}
+freezePane(wb, sheet = 1, firstRow = TRUE, firstCol = TRUE) ## freeze first row and column
+writeDataTable(wb, sheet = 1, x = mtcars,
+colNames = TRUE, rowNames = TRUE,
+tableStyle = "TableStyleLight9")
+
+setColWidths(wb, sheet = 1, cols = "A", widths = 18)
+
+
+```
+
+```{r}
+saveWorkbook(wb, "basics.xlsx", overwrite = TRUE) ## save to working directory
+
+getSheetNames("auto_rcl.xlsx")
+
+
+```
+
