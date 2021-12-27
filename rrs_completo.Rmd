@@ -28,6 +28,63 @@ library(RcppRoll)
 library(scales)
 library(ggrepel)
 ```
+```{r função "dados" importar e renomear variaveis}
+# funcao para importar dados e renomear variaveis
+dados = function(tg, depara){
+  # carregar planilha com dados do Tesouro Gerencial (tg)
+  df <- read_xlsx(tg)
+  # carregar planilha com o de_para dos nomes dos atributos do Tesouro Gerencial para nomes mais amigáveis para as variáveis. Por exemplo, de(Unidade Orçamentária Código) para(uo_cod)
+  tg2r <- read_xlsx(depara)
+  # renomear as colunas da df fazendo o de_para
+  colnames(df)<-tg2r$r_name
+  return(df)
+}
+```
+
+
+```{r}
+rp <- dados("rp.xlsx","tg2r_rp.xlsx")%>% mutate(mes = paste0(ano,"-",mês,"-","01"))%>% 
+  #  alterar NA por 0
+  mutate_all(~replace(., is.na(.), 0))%>% mutate (a_pagar = rpp + rpnp)
+
+rp <- rp %>% mutate (mes = ymd (mes))
+
+
+rp_acumulado <- rp %>% group_by(mes) %>% summarise(saldo_a_pagar= sum(a_pagar))
+ 
+
+rp <- rp %>% mutate (a_pagar = rpp + rpnp)
+
+# rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
+# rp_acumulado <- rp_acumulado %>% mutate (mes = ymd (mes)) 
+rp_acumulado <- rp %>% group_by(mes) %>% summarise(a_pagar= sum(a_pagar)) %>%   mutate(acumulado = roll_sum(a_pagar,12, fill=NA, align="right"))
+
+
+ggplot(rp_acumulado,aes(x = (as.Date(mes)),y = acumulado) ) + 
+  
+  geom_line()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+    geom_label_repel(data = rp_acumulado%>% filter (mes %in% c(max(mes))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado/1000000000,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+ geom_point(data = rp_acumulado%>% filter (mes %in% c(max(mes))), aes(x=as.Date(mes), y=acumulado))+
+ 
+  ggtitle(paste0("rp (posição: ",(month(max(as.Date(rp_acumulado$mes)), label=TRUE)), "/",(year(max(as.Date(rp_acumulado$mes)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(axis.text.x = element_text(size=8),
+          axis.text.y = element_text(size=8),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2013-01-01"),as.Date(max(rp_acumulado$mes))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+
+
+
+ ggsave("rp.png", width = 24, height = 9, units = "cm",  dpi = 1200)
+
+```
+
 
 
 ```{r,fig.width = 10, fig.height= 4}
@@ -50,7 +107,7 @@ ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) +
     geom_label_repel(data = rcl%>% filter (mes %in% c(max(mes),"2020-03-01", "2020-12-01")), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado/1000,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
  geom_point(data = rcl%>% filter (mes %in% c(max(mes),"2020-03-01", "2020-12-01")), aes(x=as.Date(mes), y=acumulado))+
  
-  ggtitle(paste0("Receita Corrente Líquida (posição: ",(month(max(as.Date(rcl$mes)))), "/",(year(max(as.Date(rcl$mes)))),")" ))+
+  ggtitle(paste0("Receita Corrente Líquida (posição: ",(month(max(as.Date(rcl$mes)), label=TRUE)), "/",(year(max(as.Date(rcl$mes)))),")" ))+
     theme_classic() +
     ylab("R$ bilhões") +
     xlab("") +
@@ -88,7 +145,7 @@ previ <- previ %>% mutate(acumulado = roll_sum(resultado,12, fill=NA, align="rig
 previ_plot <- ggplot(previ , aes(x = (as.Date(date)),y = acumulado)) + 
   geom_line(aes( ))+
   ggtitle(paste0( "Resultado Previdenciário acumulado nos últimos 12 meses (posição: ",month(max(as.Date(previ$date))), "/",year(max(as.Date(previ$date))),")"))+
-   geom_text(data = previ%>% filter (date == max(date)), aes(x=as.Date(date), y=acumulado+30,label=paste("R$", round(acumulado,0),"bi"))) +
+   geom_label_repel(data = previ%>% filter (date == max(date)), aes(x=as.Date(date), y=acumulado,label=paste( round(acumulado,0)))) +
     theme_classic() +
     ylab("R$ bilhões") +
     xlab("") +
@@ -106,6 +163,9 @@ ggsave("previ.png", width = 30, height = 15, units = "cm",  dpi = 1200)
 
 ```{r}
 educacao <- read_excel("educacao.xlsx")
+
+# names(my_data)[1] <- "sepal_length"
+# names(my_data)[2] <- "sepal_width"
 
 educacao <- educacao %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
 
@@ -141,13 +201,20 @@ geom_text(data = educacao %>% filter (date == max(date)), aes(x=mes, y=percentua
 p
 ```
 
+```{r}
+rp <- read_excel("rp.xlsx")
+```
 
 
 
 ```{r}
 saude <- read_excel("saude.xlsx")
 
-saude <- saude %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
+names(saude)[1] <- "date"
+names(saude)[2] <- "executado"
+names(saude)[5] <- "minimo"
+
+saude <- saude %>% mutate (percentual = 100*executado/minimo, mes = month(date, label = TRUE), ano = year(date))
 
 saude <- saude %>% mutate(cores = if_else(percentual>100,"red","blue"))
 
@@ -170,7 +237,7 @@ p <- ggplot(saude, aes(y=percentual, color = cores)) +
   # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
     geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
   # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
-    geom_line(data = saude %>% filter (ano == max(ano) ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual))+ 
+    geom_line(data = saude %>% filter (ano == max(ano) ),  inherit.aes =FALSE, aes(x=month(as.Date(date)), y=percentual))+ 
   
    # definir informação dos eixos
     labs( x = "mês",
@@ -180,7 +247,7 @@ p <- ggplot(saude, aes(y=percentual, color = cores)) +
                         values=c("red", "blue"))+
   ggtitle("Percentual mínimo de despesa com Saúde")+
   # optei por esconder a legenda (showlegend = FALSE)
-geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = ano))
+geom_label_repel(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = paste0(round(percentual,1),"%")))
 # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
 p
 
