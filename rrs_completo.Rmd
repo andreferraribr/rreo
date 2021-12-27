@@ -35,15 +35,21 @@ rcl <- read_excel("RCL.xlsx")
 
 rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000)
 
+rclLast <- rcl %>% # last trading day
+ filter(mes== max(mes))
+
 library(zoo)
+mes_final <-  rcl%>% filter (mes == max(mes))
 
-
-ggplot(rcl , aes(x = (as.Date(mes)),y = acumulado, label = acumulado)) + 
- 
+ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) + 
+  
   geom_line()+
   # plotar o point da UF selecionada
-    geom_text(data = rcl%>% filter (mes == max(mes)), aes(x=as.Date(mes), y=acumulado+10,label=paste("R$", round(acumulado,0), "bi")))+
-  
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+    geom_label_repel(data = rcl%>% filter (mes %in% c(max(mes),"2020-03-01", "2020-12-01")), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado/1000,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+ geom_point(data = rcl%>% filter (mes %in% c(max(mes),"2020-03-01", "2020-12-01")), aes(x=as.Date(mes), y=acumulado))+
+ 
   ggtitle(paste0("Receita Corrente Líquida (posição: ",(month(max(as.Date(rcl$mes)))), "/",(year(max(as.Date(rcl$mes)))),")" ))+
     theme_classic() +
     ylab("R$ bilhões") +
@@ -51,11 +57,12 @@ ggplot(rcl , aes(x = (as.Date(mes)),y = acumulado, label = acumulado)) +
     theme(axis.text.x = element_text(size=8),
           axis.text.y = element_text(size=8),
           legend.position = "none")+ 
-    scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date("2021-09-01")) ,breaks=date_breaks("1 year"),
+    scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date(max(rcl$mes))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
 
 
-ggsave("rcl.png", width = 30, height = 15, units = "cm",  dpi = 1200)
+
+ ggsave("rcl.png", width = 24, height = 9, units = "cm",  dpi = 1200)
 
 # 
 # names(rcl) <- c("item",teste)
