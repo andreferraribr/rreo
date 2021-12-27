@@ -26,31 +26,34 @@ library(plotly)
 library(lubridate)
 library(RcppRoll)
 library(scales)
+library(ggrepel)
 ```
 
 
 ```{r,fig.width = 10, fig.height= 4}
-rcl <- read_excel("rcl.xlsx")
+rcl <- read_excel("RCL.xlsx")
 
-rcl <- rcl %>% mutate(acumulado = roll_sum(`RECEITA CORRENTE LÍQUIDA (III) = (I - II)`,12, fill=NA, align="right")/1000000)
+rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000)
 
 library(zoo)
 
 
-ggplot(rcl , aes(x = (as.Date(item)),y = acumulado)) + 
+ggplot(rcl , aes(x = (as.Date(mes)),y = acumulado, label = acumulado)) + 
+ 
   geom_line()+
   # plotar o point da UF selecionada
-    geom_text(data = rcl%>% filter (item == max(item)), aes(x=as.Date(item), y=acumulado+10,label=paste("R$", round(acumulado,0), "bi")))+
+    geom_text(data = rcl%>% filter (mes == max(mes)), aes(x=as.Date(mes), y=acumulado+10,label=paste("R$", round(acumulado,0), "bi")))+
   
-  ggtitle(paste0("Receita Corrente Líquida (posição: ",(month(max(as.Date(rcl$item)))), "/",(year(max(as.Date(rcl$item)))),")" ))+
+  ggtitle(paste0("Receita Corrente Líquida (posição: ",(month(max(as.Date(rcl$mes)))), "/",(year(max(as.Date(rcl$mes)))),")" ))+
     theme_classic() +
     ylab("R$ bilhões") +
     xlab("") +
     theme(axis.text.x = element_text(size=8),
           axis.text.y = element_text(size=8),
           legend.position = "none")+ 
-    scale_x_date(limits = c(as.Date ("2010-01-01"),as.Date("2021-09-01")) ,breaks=date_breaks("1 year"),
+    scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date("2021-09-01")) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
+
 
 ggsave("rcl.png", width = 30, height = 15, units = "cm",  dpi = 1200)
 
@@ -207,4 +210,7 @@ geom_text(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3
 # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
 p
 ```
+
+
+
 
