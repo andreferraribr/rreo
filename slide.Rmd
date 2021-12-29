@@ -1,0 +1,243 @@
+
+---
+title: "xxxx/2022"
+
+output:
+  powerpoint_presentation:
+    reference_doc: RRS_template.pptx
+---
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+```
+
+
+```{r libraries, echo=FALSE}
+library(flexdashboard)
+library(shiny)
+library(tidyverse)
+library(readxl)
+library(DT)
+library(plotly)
+library(lubridate)
+library(RcppRoll)
+library(scales)
+library(ggrepel)
+library(forcats)
+```
+
+
+
+```{r função "dados" importar e renomear variaveis}
+# funcao para importar dados e renomear variaveis
+dados = function(tg, depara){
+  # carregar planilha com dados do Tesouro Gerencial (tg)
+  df <- read_xlsx(tg)
+  # carregar planilha com o de_para dos nomes dos atributos do Tesouro Gerencial para nomes mais amigáveis para as variáveis. Por exemplo, de(Unidade Orçamentária Código) para(uo_cod)
+  tg2r <- read_xlsx(depara)
+  # renomear as colunas da df fazendo o de_para
+  colnames(df)<-tg2r$r_name
+  return(df)
+}
+```
+## RP
+
+```{r,fig.width = 33, fig.height= 12}
+rp <- dados("rp.xlsx","tg2r_rp.xlsx")%>% mutate (a_pagar = rpp + rpnp)
+
+# rp <- rp%>% mutate(mes = paste0(ano,"-",mês,"-","01")) %>% mutate (mes = ymd (mes))
+
+rp <- rp%>% mutate(mes =ymd( paste0(ano,"-",mês,"-","01")) )
+
+rp <- rp %>%
+  mutate(grupo = fct_reorder(grupo, desc(a_pagar)))
+
+# rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
+# rp_acumulado <- rp_acumulado %>% mutate (mes = ymd (mes)) 
+
+
+ggplot(rp ,aes(x = (as.Date(mes)),y = a_pagar, fill = grupo) ) + 
+  
+  geom_area()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+    geom_label_repel(data = rp %>% filter (mes %in% c(max(mes)), grupo_cod %in% c(3,4,5)), aes(x=as.Date(mes), y=a_pagar,label=paste0( grupo, " ",prettyNum(round(a_pagar/1000000000,0), big.mark = ".", decimal.mark = ",") )), size = 10)+
+ # geom_point(data = rp%>% filter (mes %in% c(max(mes))), aes(x=as.Date(mes), y=a_pagar))+
+ 
+  ggtitle(paste0("rp (posição: ",(month(max(as.Date(rp$mes)), label=TRUE)), "/",(year(max(as.Date(rp$mes)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(plot.title=element_text(size=40),
+          axis.text.x = element_text(size=15),
+          axis.text.y = element_text(size=15),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2012-12-01"),as.Date(max(rp$mes))) ,breaks=date_breaks("6 months"),
+      labels=date_format( "%b/%y"))
+
+```
+
+
+## Receita Corrente Líquida
+
+
+```{r,fig.width = 33, fig.height= 12}
+rcl <- read_excel("RCL.xlsx")
+
+rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000)
+
+rclLast <- rcl %>% # last trading day
+ filter(mes== max(mes))
+
+library(zoo)
+mes_final <-  rcl%>% filter (mes == max(mes))
+
+ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) + 
+  
+  geom_line()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+    geom_label_repel(data = rcl%>% filter (mes %in% c(max(mes),"2020-03-01", "2020-12-01")), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado/1000,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+ geom_point(data = rcl%>% filter (mes %in% c(max(mes),"2020-03-01", "2020-12-01")), aes(x=as.Date(mes), y=acumulado))+
+ 
+  ggtitle(paste0("Receita Corrente Líquida (posição: ",(month(max(as.Date(rcl$mes)), label=TRUE)), "/",(year(max(as.Date(rcl$mes)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(plot.title=element_text(size=40),
+          axis.text.x = element_text(size=8),
+          axis.text.y = element_text(size=8),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date(max(rcl$mes))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+
+
+```
+
+
+## Demonstrativos do RGPS, do RPPS e dos Militares Inativos e Pensionistas 
+
+```{r}
+previ <- read_excel("previ.xlsx")
+
+names(previ)[1] <- "date"
+
+previ <- previ %>% mutate (receita =rowSums( previ[,startsWith(names(previ),"Movimento R")]), despesa  =rowSums( previ[,startsWith(names(previ),"Movimento D")]), resultado = receita - despesa)
+
+previ2 <- previ  %>% select(ends_with("Meses"))
+
+# datatable(previ)
+# # https://itsalocke.com/blog/understanding-rolling-calculations-in-r/
+previ <- previ %>% mutate(acumulado = roll_sum(resultado,12, fill=NA, align="right")/1000000000)
+```
+
+
+```{r,fig.width = 33, fig.height= 12}
+# https://itsalocke.com/blog/understanding-rolling-calculations-in-r/
+previ_plot <- ggplot(previ , aes(x = (as.Date(date)),y = acumulado)) + 
+  geom_line(aes( ))+
+  ggtitle(paste0( "Resultado Previdenciário acumulado nos últimos 12 meses (posição: ",month(max(as.Date(previ$date))), "/",year(max(as.Date(previ$date))),")"))+ 
+       geom_label_repel(size = 10,data = previ%>% filter (date == max(date)), aes(x=as.Date(date), y=acumulado,label=paste( round(acumulado,0)))) +
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme( plot.title=element_text(size=40),
+           axis.text.x = element_text(size=15),
+          axis.text.y = element_text(size=15),
+          legend.position = "none")+ 
+    scale_x_date(breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+previ_plot
+```
+
+
+
+## Educação
+
+```{r,fig.width = 33, fig.height= 15 }
+educacao <- read_excel("educacao.xlsx")
+
+# names(my_data)[1] <- "sepal_length"
+# names(my_data)[2] <- "sepal_width"
+
+educacao <- educacao %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
+
+educacao <- educacao %>% mutate(cores = if_else(percentual>100,"red","blue"))
+
+p <- ggplot(educacao, aes(y=percentual, color = cores)) +
+  # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+  # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+    geom_jitter( data = educacao %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2, size = 10) +
+  # plotar o point da UF selecionada
+    geom_point(data = educacao %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano)), size = 10)+
+  
+  # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+    geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+  # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+  # inherit.aes =FALSE para evitar duas linhas de tendência.
+  # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+  # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+    geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+  # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+    geom_line(data = educacao %>% filter (ano == max(ano) ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual))+ 
+  
+   # definir informação dos eixos
+    labs( x = "mês",
+          y = "%")+ theme_classic()+ 
+  # escala de cor. Os levels são definidos na coluna cores da df_limites.
+    scale_color_manual(breaks = levels(educacao$cores),
+                        values=c("red", "blue"))+
+  ggtitle("Percentual mínimo de despesa com Educação")+
+  # optei por esconder a legenda (showlegend = FALSE)
+geom_text(data = educacao %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = ano))
+# (p <- ggplotly(p))%>% layout(showlegend = FALSE)
+p
+```
+
+## Saúde
+
+```{r,fig.width = 33, fig.height= 15}
+saude <- read_excel("saude.xlsx")
+
+names(saude)[1] <- "date"
+names(saude)[2] <- "executado"
+names(saude)[5] <- "minimo"
+
+saude <- saude %>% mutate (percentual = 100*executado/minimo, mes = month(date, label = TRUE), ano = year(date))
+
+saude <- saude %>% mutate(cores = if_else(percentual>100,"red","blue"))
+
+p <- ggplot(saude, aes(y=percentual, color = cores)) +
+  # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
+  # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
+    geom_jitter( data = saude %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2, size = 10) +
+  # plotar o point da UF selecionada
+    geom_point(data = saude %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano)), size = 10)+
+  
+  # plotar linha vermelha tracejada dividindo resultados bons (azul), ruins (vermelho). O argumento "corte" define a altura da linha.
+    geom_hline(yintercept=100, colour = "red", linetype = "dashed") +
+  # https://ggplot2.tidyverse.org/reference/geom_smooth.html
+  # inherit.aes =FALSE para evitar duas linhas de tendência.
+  # Caso contrário teríamos uma linha de tendência para a cada factor level (coluna cores).
+  # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
+    geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
+  # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
+    geom_line(data = saude %>% filter (ano == max(ano) ),  inherit.aes =FALSE, aes(x=month(as.Date(date)), y=percentual))+ 
+  
+   # definir informação dos eixos
+    labs( x = "mês",
+          y = "%")+ theme_classic()+ 
+  # escala de cor. Os levels são definidos na coluna cores da df_limites.
+    scale_color_manual(breaks = levels(saude$cores),
+                        values=c("red", "blue"))+
+  ggtitle("Percentual mínimo de despesa com Saúde")+
+  # optei por esconder a legenda (showlegend = FALSE)
+geom_label_repel(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = paste0(round(percentual,1),"%")))
+# (p <- ggplotly(p))%>% layout(showlegend = FALSE)
+p
+```
+
