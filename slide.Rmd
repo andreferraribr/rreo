@@ -28,7 +28,10 @@ library(ggrepel)
 library(forcats)
 ```
 
-
+```{r negar %in%}
+# https://www.r-bloggers.com/the-notin-operator/
+'%!in%' <- Negate('%in%')
+```
 
 ```{r função "dados" importar e renomear variaveis}
 # funcao para importar dados e renomear variaveis
@@ -240,4 +243,91 @@ geom_label_repel(data = saude %>% filter (date == max(date)), aes(x=mes, y=perce
 # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
 p
 ```
+
+## DISPONIBILIDADES
+
+```{r,fig.width = 33, fig.height= 15}
+disponibilidades <- read_excel("disponibilidades.xlsx")
+
+disponibilidades <- disponibilidades %>%
+  mutate(item = fct_reorder(item, desc(saldo)))
+
+# rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
+disponibilidades <- disponibilidades %>% mutate (mês = ymd (mês)) 
+
+
+ggplot(disponibilidades %>% filter(item %!in% c ("TOTAL DE RECURSOS VINCULADOS (II)","Total de Disponibilidades (Ordinárias e Vinculadas)","TOTAL DE RECURSOS VINCULADOS (II)" )) ,aes(x = (as.Date(mês)),y = saldo, fill = item) ) + 
+  
+  geom_area()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mês== max(mês)) %>% summarise(acumulado=acumulado))+
+    # 
+     geom_label_repel(data = disponibilidades %>% filter (item %!in% c ("TOTAL DE RECURSOS VINCULADOS (II)","Total de Disponibilidades (Ordinárias e Vinculadas)","TOTAL DE RECURSOS VINCULADOS (II)" ),mês %in% c(max(mês))), aes(x=as.Date(mês), y=saldo,label=paste0( item, " ",prettyNum(round(saldo/1000000000,0), big.mark = ".", decimal.mark = ",") )), size = 10)+
+ # geom_point(data = rp%>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=saldo))+
+ 
+  ggtitle(paste0("DISPONIBILIDADES (posição: ",(month(max(as.Date(disponibilidades$mês)), label=TRUE)), "/",(year(max(as.Date(disponibilidades$mês)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(plot.title=element_text(size=40),
+          axis.text.x = element_text(size=15),
+          axis.text.y = element_text(size=15),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2018-01-01"),as.Date(max(disponibilidades$mês))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+```
+
+
+## SEGURIDADE
+
+```{r,fig.width = 33, fig.height= 15}
+seguridade <- read_excel("seguridade.xlsx")
+
+seguridade <- seguridade %>%
+  mutate(item = fct_reorder(item, desc(saldo)))
+
+
+
+seguridade <- seguridade %>% replace_na(list(saldo = 0))
+
+seguridade <- seguridade %>% arrange(item, mês)
+
+seguridade <- seguridade %>%  mutate(movimento =c(seguridade$saldo[1], diff(as.matrix(seguridade$saldo))))
+
+seguridade <- seguridade %>% mutate(movimento = if_else(month(mês)== 1, saldo, movimento))
+
+cbind(seguridade, movimento)
+
+# rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
+seguridade <- seguridade %>% mutate (mês = ymd (mês)) 
+
+
+seguridade <- seguridade %>% mutate (saldo = if_else(str_detect(item, "Despesa"), saldo*-1, saldo))
+
+
+seguridade <- seguridade %>% mutate (tipo_saldo = if_else(str_detect(item, "Total"), "total", "item"))
+
+seguridade <- seguridade %>% mutate (movimento = if_else(str_detect(item, "Despesa"), movimento*-1, movimento))
+
+ggplot(seguridade %>% filter(tipo_saldo %!in% c ("Total" )) ,aes(x = (as.Date(mês)),y = movimento, fill = item) ) + 
+  
+  geom_area()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mês== max(mês)) %>% summarise(acumulado=acumulado))+
+    # 
+     geom_label_repel(data = seguridade %>% filter (tipo_saldo %!in% c ("Total" ),mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento,label=paste0( item, " ",prettyNum(round(movimento/1000000000,0), big.mark = ".", decimal.mark = ",") )), size = 10)+
+ # geom_point(data = rp%>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento))+
+ 
+  ggtitle(paste0("seguridade (posição: ",(month(max(as.Date(seguridade$mês)), label=TRUE)), "/",(year(max(as.Date(seguridade$mês)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(plot.title=element_text(size=40),
+          axis.text.x = element_text(size=15),
+          axis.text.y = element_text(size=15),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2018-01-01"),as.Date(max(seguridade$mês))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+```
+
 
