@@ -296,7 +296,7 @@ seguridade <- seguridade %>%  mutate(movimento =c(seguridade$saldo[1], diff(as.m
 
 seguridade <- seguridade %>% mutate(movimento = if_else(month(mês)== 1, saldo, movimento))
 
-cbind(seguridade, movimento)
+# cbind(seguridade, movimento)
 
 # rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
 seguridade <- seguridade %>% mutate (mês = ymd (mês)) 
@@ -309,15 +309,19 @@ seguridade <- seguridade %>% mutate (tipo_saldo = if_else(str_detect(item, "Tota
 
 seguridade <- seguridade %>% mutate (movimento = if_else(str_detect(item, "Despesa"), movimento*-1, movimento))
 
-ggplot(seguridade %>% filter(tipo_saldo %!in% c ("Total" )) ,aes(x = (as.Date(mês)),y = movimento, fill = item) ) + 
+max_3 <- seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_max( saldo, n =2)
+
+min_3 <- seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_min( saldo, n =2)
+
+ggplot(seguridade %>% filter(tipo_saldo   %in% c ("total" ) ) ,aes(x = (as.Date(mês)),y = movimento, fill = item) ) + 
   
   geom_area()+
   # plotar o point da UF selecionada
     # geom_label(label = rcl %>% filter (mês== max(mês)) %>% summarise(acumulado=acumulado))+
     # 
-     geom_label_repel(data = seguridade %>% filter (tipo_saldo %!in% c ("Total" ),mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento,label=paste0( item, " ",prettyNum(round(movimento/1000000000,0), big.mark = ".", decimal.mark = ",") )), size = 10)+
+     geom_label_repel(data = seguridade %>% filter (tipo_saldo %in% c ("total" ),mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento,label=paste0( item, " ",prettyNum(round(movimento,1), big.mark = ".", decimal.mark = ",") )), size = 10)+
  # geom_point(data = rp%>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento))+
- 
+
   ggtitle(paste0("seguridade (posição: ",(month(max(as.Date(seguridade$mês)), label=TRUE)), "/",(year(max(as.Date(seguridade$mês)))),")" ))+
     theme_classic() +
     ylab("R$ bilhões") +
@@ -328,6 +332,88 @@ ggplot(seguridade %>% filter(tipo_saldo %!in% c ("Total" )) ,aes(x = (as.Date(m�
           legend.position = "none")+ 
     scale_x_date(limits = c(as.Date ("2018-01-01"),as.Date(max(seguridade$mês))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
+
+
+seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_max( saldo, n =3)
+
+seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_min( saldo, n =3)
+
+
 ```
+
+
+
+
+
+
+```{r,fig.width = 33, fig.height= 15}
+seguridade <- read_excel("seguridade.xlsx")
+
+seguridade <- seguridade %>%
+  mutate(item = fct_reorder(item, desc(saldo)))
+
+
+
+seguridade <- seguridade %>% replace_na(list(saldo = 0))
+
+seguridade <- seguridade %>% arrange(item, mês)
+
+seguridade <- seguridade %>%  mutate(movimento =c(seguridade$saldo[1], diff(as.matrix(seguridade$saldo))))
+
+seguridade <- seguridade %>% mutate(movimento = if_else(month(mês)== 1, saldo, movimento))
+
+# cbind(seguridade, movimento)
+
+# rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
+seguridade <- seguridade %>% mutate (mês = ymd (mês)) 
+
+
+seguridade <- seguridade %>% mutate (saldo = if_else(str_detect(item, "Despesa"), saldo*-1, saldo))
+
+
+seguridade <- seguridade %>% mutate (tipo_saldo = if_else(str_detect(item, "Total"), "total", "item"))
+
+seguridade <- seguridade %>% mutate (movimento = if_else(str_detect(item, "Despesa"), movimento*-1, movimento))
+
+seguridade_total <- seguridade %>% filter(tipo_saldo == "total") %>% group_by(mês, item) %>% summarise(movimento = movimento) %>%  pivot_wider(names_from = "item", values_from = "movimento")
+names(seguridade_total)[2:3] <- c("despesa","receita") 
+
+seguridade_total <- seguridade_total %>% mutate(resultado = receita+despesa)
+
+
+max_3 <- seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_max( saldo, n =2)
+
+min_3 <- seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_min( saldo, n =2)
+
+ggplot(seguridade_total) + 
+  
+  geom_area(aes(x = (as.Date(mês)),y = receita), fill = "blue")+
+   geom_area(aes(x = (as.Date(mês)),y = despesa), fill = "red")+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mês== max(mês)) %>% summarise(acumulado=acumulado))+
+    # 
+     geom_label_repel(data = seguridade %>% filter (tipo_saldo %in% c ("total" ),mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento,label=paste0( item, " ",prettyNum(round(movimento,1), big.mark = ".", decimal.mark = ",") )), size = 10)+
+ # geom_point(data = rp%>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento))+
+ 
+   geom_line(aes(x = (as.Date(mês)),y = resultado), size = 3)+
+
+  ggtitle(paste0("seguridade (posição: ",(month(max(as.Date(seguridade$mês)), label=TRUE)), "/",(year(max(as.Date(seguridade$mês)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(plot.title=element_text(size=40),
+          axis.text.x = element_text(size=15),
+          axis.text.y = element_text(size=15),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2018-01-01"),as.Date(max(seguridade$mês))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+
+
+seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_max( saldo, n =3)
+
+seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_min( saldo, n =3)
+
+```
+
 
 
