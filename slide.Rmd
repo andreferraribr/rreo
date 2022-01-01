@@ -33,6 +33,35 @@ library(forcats)
 '%!in%' <- Negate('%in%')
 ```
 
+
+```{r}
+plot_rolling = function(df){
+  ggplot(df,aes(x = (as.Date(mes)),y = acumulado) ) + 
+  
+  geom_line()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+    geom_label_repel(size = 10, data = df%>% filter (mes %in% c(max(mes),"2020-03-01", max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+ geom_point(data = df%>% filter (mes %in% c(max(mes),"2020-03-01",max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado))+
+ 
+  ggtitle(paste0("posição: ",(month(max(as.Date(df$mes)), label=TRUE)), "/",(year(max(as.Date(df$mes)))) , "  em Bi R$"))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(plot.title=element_text(size=40),
+          # axis.text = element_text(size = 20),
+          axis.text.x = element_text(size=25),
+          axis.title.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date(max(df$mes))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+}
+```
+
+
 ```{r função "dados" importar e renomear variaveis}
 # funcao para importar dados e renomear variaveis
 dados = function(tg, depara){
@@ -46,13 +75,13 @@ dados = function(tg, depara){
 }
 ```
 
-## Receita Corrente Líquida
+## Receita Corrente Líquida em Bilhoes
 
 
 ```{r,fig.width = 33, fig.height= 12}
 rcl <- read_excel("RCL.xlsx")
 
-rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000)
+rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000000)
 
 rclLast <- rcl %>% # last trading day
  filter(mes== max(mes))
@@ -60,6 +89,11 @@ rclLast <- rcl %>% # last trading day
 library(zoo)
 mes_final <-  rcl%>% filter (mes == max(mes))
 
+plot_rolling(rcl)
+
+```
+
+```{r eval=FALSE, include=FALSE}
 ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) + 
   
   geom_line()+
@@ -79,9 +113,8 @@ ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) +
           legend.position = "none")+ 
     scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date(max(rcl$mes))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
-
-
 ```
+
 
 
 ## Demonstrativos do RGPS, do RPPS e dos Militares Inativos e Pensionistas 
@@ -89,7 +122,7 @@ ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) +
 ```{r}
 previ <- read_excel("previ.xlsx")
 
-names(previ)[1] <- "date"
+names(previ)[1] <- "mes"
 
 previ <- previ %>% mutate (receita =rowSums( previ[,startsWith(names(previ),"Movimento R")]), despesa  =rowSums( previ[,startsWith(names(previ),"Movimento D")]), resultado = receita - despesa)
 
@@ -101,7 +134,14 @@ previ <- previ %>% mutate(acumulado = roll_sum(resultado,12, fill=NA, align="rig
 ```
 
 
-```{r,fig.width = 33, fig.height= 12}
+
+
+```{r, plot previ, fig.width = 33, fig.height= 12}
+plot_rolling(previ)
+```
+
+
+```{r eval=FALSE,  include=FALSE}
 # https://itsalocke.com/blog/understanding-rolling-calculations-in-r/
 previ_plot <- ggplot(previ , aes(x = (as.Date(date)),y = acumulado)) + 
   geom_line(aes( ))+
@@ -118,6 +158,7 @@ previ_plot <- ggplot(previ , aes(x = (as.Date(date)),y = acumulado)) +
       labels=date_format( "%Y"))
 previ_plot
 ```
+
 
 
 ```{r,fig.width = 33, fig.height= 15}
@@ -225,7 +266,9 @@ ggplot(disponibilidades %>% filter(item %!in% c ("TOTAL DE RECURSOS VINCULADOS (
 ## RP
 
 ```{r,fig.width = 33, fig.height= 12}
-rp <- dados("rp_grupo.xlsx","tg2r_rp.xlsx")%>% mutate (a_pagar = rpp + rpnp)
+rp <- dados("rp_grupo.xlsx","tg2r_rp.xlsx")%>% replace_na(list(rpnp = 0, rpp = 0))
+
+rp <- rp%>% mutate (a_pagar = rpp + rpnp)
 
 # rp <- rp%>% mutate(mes = paste0(ano,"-",mês,"-","01")) %>% mutate (mes = ymd (mes))
 
