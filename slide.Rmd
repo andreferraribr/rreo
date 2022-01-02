@@ -33,6 +33,23 @@ library(forcats)
 '%!in%' <- Negate('%in%')
 ```
 
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(fig.width=33, fig.height=12,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+
+
+```{r}
+tema <- theme_classic() + theme(plot.title=element_text(size=40,hjust = 0.5 ),
+          # axis.text = element_text(size = 20),
+          axis.text.x = element_text(size=25),
+          axis.title.y=element_text(size=25),
+          axis.text.y=element_text(size=25),
+          axis.ticks.y=element_blank(),
+          legend.position = "none")
+```
+
 
 ```{r}
 plot_rolling = function(df){
@@ -42,24 +59,54 @@ plot_rolling = function(df){
   # plotar o point da UF selecionada
     # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
     # 
-    geom_label_repel (size = 7, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+  
   geom_point(data = df%>% filter (mes %in% c(max(mes),max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado),size =5)+
- 
+    
+   geom_label_repel (size = 7, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+    
+  
+    
   ggtitle(paste0("Posição: ",(month(max(as.Date(df$mes)), label=TRUE, abbr = FALSE)), "/",(year(max(as.Date(df$mes)))) ))+
     theme_classic() +
     ylab("R$ bilhões") +
     xlab("") +
-    theme(plot.title=element_text(size=40,hjust = 0.5 ),
-          # axis.text = element_text(size = 20),
-          axis.text.x = element_text(size=25),
-          axis.title.y=element_blank(),
-          axis.text.y=element_text(size=25),
-          axis.ticks.y=element_blank(),
-          legend.position = "none")+ 
+    tema+
+    # theme(plot.title=element_text(size=40,hjust = 0.5 ),
+    #       # axis.text = element_text(size = 20),
+    #       axis.text.x = element_text(size=25),
+    #       axis.title.y=element_blank(),
+    #       axis.text.y=element_text(size=25),
+    #       axis.ticks.y=element_blank(),
+    #       legend.position = "none")+
     scale_x_date(limits = c(as.Date (min(df$mes)),as.Date(max(df$mes))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
-}
+ }
 ```
+
+```{r}
+plot_geral = function(df){
+  ggplot(df,aes(x = (as.Date(mes)),y = acumulado) ) + 
+  
+  geom_line()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+  
+  geom_point(data = df%>% filter (mes %in% c(max(mes),max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado),size =5)+
+    
+   geom_label_repel (size = 7, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+    
+  
+    
+  ggtitle(paste0("Posição: ",(month(max(as.Date(df$mes)), label=TRUE, abbr = FALSE)), "/",(year(max(as.Date(df$mes)))) ))+
+    tema +
+    ylab("R$ bilhões") +
+    xlab("") +
+    scale_x_date(limits = c(as.Date (min(df$mes)),as.Date(max(df$mes))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+ }
+```
+
 
 
 ```{r função "dados" importar e renomear variaveis}
@@ -78,7 +125,7 @@ dados = function(tg, depara){
 ## Receita Corrente Líquida em Bilhoes
 
 
-```{r,fig.width = 33, fig.height= 12}
+```{r}
 rcl <- read_excel("RCL.xlsx")
 
 rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000000)
@@ -161,7 +208,7 @@ previ_plot
 
 
 
-```{r,fig.width = 33, fig.height= 15}
+```{r}
 seguridade <- read_excel("seguridade.xlsx")
 
 seguridade <- seguridade %>%
@@ -217,13 +264,10 @@ ggplot(seguridade_total) +
    geom_line(aes(x = (as.Date(mês)),y = resultado))+
   geom_label_repel(data = seguridade_total %>% filter (mês %in% c(max(seguridade_total$mês), max(seguridade_total$mês)-years(1))), aes(x=as.Date(mês), y=resultado,label=paste0( prettyNum(round(resultado,1), big.mark = ".", decimal.mark = ",") )), size = 10)+
   ggtitle(paste0("seguridade (posição: ",(month(max(as.Date(seguridade$mês)), label=TRUE)), "/",(year(max(as.Date(seguridade$mês)))),")" ))+
-    theme_classic() +
+   tema +
     ylab("R$ bilhões") +
     xlab("") +
-    theme(plot.title=element_text(size=40),
-          axis.text.x = element_text(size=15),
-          axis.text.y = element_text(size=15),
-          legend.position = "none")+ 
+    tema+ 
     scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date(max(seguridade$mês))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
 
@@ -236,7 +280,7 @@ ggplot(seguridade_total) +
 
 ## DISPONIBILIDADES
 
-```{r,fig.width = 33, fig.height= 15}
+```{r}
 disponibilidades <- read_excel("disponibilidades.xlsx")
 
 disponibilidades <- disponibilidades %>%
@@ -256,20 +300,17 @@ ggplot(disponibilidades %>% filter(item %!in% c ("TOTAL DE RECURSOS VINCULADOS (
  # geom_point(data = rp%>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=saldo))+
  
   ggtitle(paste0("DISPONIBILIDADES (posição: ",(month(max(as.Date(disponibilidades$mês)), label=TRUE)), "/",(year(max(as.Date(disponibilidades$mês)))),")" ))+
-    theme_classic() +
+    tema +
     ylab("R$ bilhões") +
     xlab("") +
-    theme(plot.title=element_text(size=40),
-          axis.text.x = element_text(size=15),
-          axis.text.y = element_text(size=15),
-          legend.position = "none")+ 
+    tema+ 
     scale_x_date(limits = c(as.Date ("2018-01-01"),as.Date(max(disponibilidades$mês))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
 ```
 
 ## RP
 
-```{r,fig.width = 33, fig.height= 12}
+```{r}
 rp <- dados("rp_grupo.xlsx","tg2r_rp.xlsx")%>% replace_na(list(rpnp = 0, rpp = 0))
 
 rp <- rp%>% mutate (a_pagar = rpp + rpnp)
@@ -293,17 +334,14 @@ ggplot(rp ,aes(x = (as.Date(mes)),y = a_pagar, fill = grupo) ) +
     # 
     geom_label_repel(data = rp %>% filter (mes %in% c(max(mes)), grupo_cod %in% c(3,4,5)), aes(x=as.Date(mes), y=a_pagar,label=paste0( grupo, " ",prettyNum(round(a_pagar/1000000000,0), big.mark = ".", decimal.mark = ",") )), size = 10)+
  # geom_point(data = rp%>% filter (mes %in% c(max(mes))), aes(x=as.Date(mes), y=a_pagar))+
- 
+  
   ggtitle(paste0("rp (posição: ",(month(max(as.Date(rp$mes)), label=TRUE)), "/",(year(max(as.Date(rp$mes)))),")" ))+
     theme_classic() +
     ylab("R$ bilhões") +
     xlab("") +
-    theme(plot.title=element_text(size=40),
-          axis.text.x = element_text(size=15),
-          axis.text.y = element_text(size=15),
-          legend.position = "none")+ 
-    scale_x_date(limits = c(as.Date ("2012-12-01"),as.Date(max(rp$mes))) ,breaks=date_breaks("6 months"),
-      labels=date_format( "%b/%y"))
+    tema+ 
+    scale_x_date(limits = c(as.Date ("2012-12-01"),as.Date(max(rp$mes))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
 
 ```
 
@@ -313,7 +351,7 @@ ggplot(rp ,aes(x = (as.Date(mes)),y = a_pagar, fill = grupo) ) +
 
 ## Educação
 
-```{r,fig.width = 33, fig.height= 15 }
+```{r }
 educacao <- read_excel("educacao.xlsx")
 
 # names(my_data)[1] <- "sepal_length"
@@ -326,7 +364,7 @@ educacao <- educacao %>% mutate(cores = if_else(percentual>100,"red","blue"))
 p <- ggplot(educacao, aes(y=percentual, color = cores)) +
   # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
   # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
-    geom_jitter( data = educacao %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2, size = 10) +
+    geom_jitter( data = educacao %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), width = 0.2, height = 0.2, alpha=0.2, size = 10) +
   # plotar o point da UF selecionada
     geom_point(data = educacao %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano)), size = 10)+
   
@@ -342,7 +380,7 @@ p <- ggplot(educacao, aes(y=percentual, color = cores)) +
   
    # definir informação dos eixos
     labs( x = "mês",
-          y = "%")+ theme_classic()+ 
+          y = "%")+ tema+ 
   # escala de cor. Os levels são definidos na coluna cores da df_limites.
     scale_color_manual(breaks = levels(educacao$cores),
                         values=c("red", "blue"))+
@@ -355,7 +393,7 @@ p
 
 ## Saúde
 
-```{r,fig.width = 33, fig.height= 15}
+```{r}
 saude <- read_excel("saude.xlsx")
 
 names(saude)[1] <- "date"
@@ -369,7 +407,7 @@ saude <- saude %>% mutate(cores = if_else(percentual>100,"red","blue"))
 p <- ggplot(saude, aes(y=percentual, color = cores)) +
   # geom_jitter exclui a UF selecionada para evitar a apresentação de dois pontos para a mesma UF.
   # Caso contrário teríamos um ponto plotado pelo geom_jitter e outro plotado pelo geom_point
-    geom_jitter( data = saude %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), alpha=0.2, size = 10) +
+    geom_jitter( data = saude %>% filter (ano != max(ano)), aes(x = mes, text=paste("ANO: ", ano)), width = 0.2, height = 0.2, alpha=0.2, size = 10) +
   # plotar o point da UF selecionada
     geom_point(data = saude %>% filter (ano == max(ano)), aes(x=mes, y=percentual,text=paste("ANO: ", ano)), size = 10)+
   
@@ -385,7 +423,8 @@ p <- ggplot(saude, aes(y=percentual, color = cores)) +
   
    # definir informação dos eixos
     labs( x = "mês",
-          y = "%")+ theme_classic()+ 
+          y = "%")+
+   tema+ 
   # escala de cor. Os levels são definidos na coluna cores da df_limites.
     scale_color_manual(breaks = levels(saude$cores),
                         values=c("red", "blue"))+
@@ -467,6 +506,16 @@ seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item
 
 
 
+```{r}
+plot_geral(rcl)+
+    theme(plot.title=element_text(size=40,hjust = 0.5 ),
+          # axis.text = element_text(size = 20),
+          axis.text.x = element_text(size=25),
+          axis.title.y=element_blank(),
+          axis.text.y=element_text(size=25),
+          axis.ticks.y=element_blank(),
+          legend.position = "none")
+```
 
 
 
