@@ -42,21 +42,21 @@ plot_rolling = function(df){
   # plotar o point da UF selecionada
     # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
     # 
-    geom_label_repel(size = 10, data = df%>% filter (mes %in% c(max(mes),"2020-03-01", max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
- geom_point(data = df%>% filter (mes %in% c(max(mes),"2020-03-01",max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado))+
+    geom_label_repel (size = 7, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+  geom_point(data = df%>% filter (mes %in% c(max(mes),max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado),size =5)+
  
-  ggtitle(paste0("posição: ",(month(max(as.Date(df$mes)), label=TRUE)), "/",(year(max(as.Date(df$mes)))) , "  em Bi R$"))+
+  ggtitle(paste0("Posição: ",(month(max(as.Date(df$mes)), label=TRUE, abbr = FALSE)), "/",(year(max(as.Date(df$mes)))) ))+
     theme_classic() +
     ylab("R$ bilhões") +
     xlab("") +
-    theme(plot.title=element_text(size=40),
+    theme(plot.title=element_text(size=40,hjust = 0.5 ),
           # axis.text = element_text(size = 20),
           axis.text.x = element_text(size=25),
           axis.title.y=element_blank(),
-          axis.text.y=element_blank(),
+          axis.text.y=element_text(size=25),
           axis.ticks.y=element_blank(),
           legend.position = "none")+ 
-    scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date(max(df$mes))) ,breaks=date_breaks("1 year"),
+    scale_x_date(limits = c(as.Date (min(df$mes)),as.Date(max(df$mes))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
 }
 ```
@@ -173,6 +173,8 @@ seguridade <- seguridade %>% replace_na(list(saldo = 0))
 
 seguridade <- seguridade %>% arrange(item, mês)
 
+
+
 seguridade <- seguridade %>%  mutate(movimento =c(seguridade$saldo[1], diff(as.matrix(seguridade$saldo))))
 
 seguridade <- seguridade %>% mutate(movimento = if_else(month(mês)== 1, saldo, movimento))
@@ -196,6 +198,8 @@ names(seguridade_total)[2:3] <- c("despesa","receita")
 seguridade_total <- seguridade_total %>% mutate(resultado = receita+despesa)
 
 
+
+
 max_3 <- seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_max( saldo, n =2)
 
 min_3 <- seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item) %>% summarise(saldo = sum(saldo)) %>% slice_min( saldo, n =2)
@@ -211,7 +215,7 @@ ggplot(seguridade_total) +
  # geom_point(data = rp%>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=movimento))+
 
    geom_line(aes(x = (as.Date(mês)),y = resultado))+
-  geom_label_repel(data = seguridade_total %>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=resultado,label=paste0( prettyNum(round(resultado,1), big.mark = ".", decimal.mark = ",") )), size = 7)+
+  geom_label_repel(data = seguridade_total %>% filter (mês %in% c(max(seguridade_total$mês), max(seguridade_total$mês)-years(1))), aes(x=as.Date(mês), y=resultado,label=paste0( prettyNum(round(resultado,1), big.mark = ".", decimal.mark = ",") )), size = 10)+
   ggtitle(paste0("seguridade (posição: ",(month(max(as.Date(seguridade$mês)), label=TRUE)), "/",(year(max(as.Date(seguridade$mês)))),")" ))+
     theme_classic() +
     ylab("R$ bilhões") +
@@ -220,7 +224,7 @@ ggplot(seguridade_total) +
           axis.text.x = element_text(size=15),
           axis.text.y = element_text(size=15),
           legend.position = "none")+ 
-    scale_x_date(limits = c(as.Date ("2018-01-01"),as.Date(max(seguridade$mês))) ,breaks=date_breaks("1 year"),
+    scale_x_date(limits = c(as.Date ("2008-01-01"),as.Date(max(seguridade$mês))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
 
 
