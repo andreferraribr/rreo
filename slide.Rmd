@@ -34,6 +34,8 @@ library(forcats)
 ```
 
 ```{r global-options, include=FALSE}
+
+# https://kbroman.org/knitr_knutshell/pages/Rmarkdown.html
 knitr::opts_chunk$set(fig.width=33, fig.height=12,
                       echo=FALSE, warning=FALSE, message=FALSE)
 ```
@@ -48,14 +50,21 @@ tema <- theme_classic() + theme(plot.title=element_text(size=40,hjust = 0.5 ),
           axis.text.y=element_text(size=25),
           axis.ticks.y=element_blank(),
           legend.position = "none")
+
+
+# https://rpubs.com/mclaire19/ggplot2-custom-themes
+
+# https://bookdown.org/rdpeng/RProgDA/building-a-new-theme.html
+
+# https://themockup.blog/posts/2020-12-26-creating-and-using-custom-ggplot2-themes/
 ```
 
 
 ```{r}
 plot_rolling = function(df){
-  ggplot(df,aes(x = (as.Date(mes)),y = acumulado) ) + 
+  ggplot(df ) + 
   
-  geom_line()+
+  geom_area(aes(x = (as.Date(mes)),y = acumulado, fill = cores ))+
   # plotar o point da UF selecionada
     # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
     # 
@@ -79,7 +88,8 @@ plot_rolling = function(df){
     #       axis.ticks.y=element_blank(),
     #       legend.position = "none")+
     scale_x_date(limits = c(as.Date (min(df$mes)),as.Date(max(df$mes))) ,breaks=date_breaks("1 year"),
-      labels=date_format( "%Y"))
+      labels=date_format( "%Y")) +
+    scale_fill_manual(values = c(df$cores))
  }
 ```
 
@@ -122,7 +132,8 @@ dados = function(tg, depara){
 }
 ```
 
-## Receita Corrente Líquida em Bilhoes
+## Receita Corrente Líquida (acumulado últimos 12 meses) (R$ bilhões)
+
 
 
 ```{r}
@@ -135,6 +146,10 @@ rclLast <- rcl %>% # last trading day
 
 library(zoo)
 mes_final <-  rcl%>% filter (mes == max(mes))
+
+ rcl <- rcl %>% mutate(cores = if_else(acumulado>0,"blue","red"))
+ 
+ rcl <- rcl %>% filter(cores %in% c("blue","red") )
 
 plot_rolling(rcl)
 
@@ -164,7 +179,7 @@ ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) +
 
 
 
-## Demonstrativos do RGPS, do RPPS e dos Militares Inativos e Pensionistas 
+## Demonstrativos do RGPS, do RPPS e dos Militares Inativos e Pensionistas (R$ bilhões)
 
 ```{r}
 previ <- read_excel("previ.xlsx")
@@ -178,6 +193,11 @@ previ2 <- previ  %>% select(ends_with("Meses"))
 # datatable(previ)
 # # https://itsalocke.com/blog/understanding-rolling-calculations-in-r/
 previ <- previ %>% mutate(acumulado = roll_sum(resultado,12, fill=NA, align="right")/1000000000)
+
+previ <- previ %>% mutate(cores = if_else(acumulado>0,"blue","red"))
+
+
+previ <- previ%>% filter(cores %in% c("blue","red") )
 ```
 
 
@@ -206,6 +226,7 @@ previ_plot <- ggplot(previ , aes(x = (as.Date(date)),y = acumulado)) +
 previ_plot
 ```
 
+## Receitas e Despesas da Seguridade Social (R$ bilhões)
 
 
 ```{r}
@@ -278,7 +299,7 @@ ggplot(seguridade_total) +
 
 ```
 
-## DISPONIBILIDADES
+## Disponibilidade de Caixa do Poder Executivo (R$ bilhões)
 
 ```{r}
 disponibilidades <- read_excel("disponibilidades.xlsx")
@@ -308,7 +329,7 @@ ggplot(disponibilidades %>% filter(item %!in% c ("TOTAL DE RECURSOS VINCULADOS (
       labels=date_format( "%Y"))
 ```
 
-## RP
+## Saldo a pagar de Restos a Pagar (Processados e Não Processado) (R$ Bilhões)
 
 ```{r}
 rp <- dados("rp_grupo.xlsx","tg2r_rp.xlsx")%>% replace_na(list(rpnp = 0, rpp = 0))
@@ -349,15 +370,16 @@ ggplot(rp ,aes(x = (as.Date(mes)),y = a_pagar, fill = grupo) ) +
 
 
 
-## Educação
+## Mínimo Constitucional de Gasto com Educação 
 
 ```{r }
 educacao <- read_excel("educacao.xlsx")
 
-# names(my_data)[1] <- "sepal_length"
-# names(my_data)[2] <- "sepal_width"
+names(educacao)[1] <- "date"
+names(educacao)[4] <- "executado"
+names(educacao)[5] <- "minimo"
 
-educacao <- educacao %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
+educacao <- educacao %>% mutate (percentual = 100*executado/minimo, mes = month(date, label = TRUE), ano = year(date))
 
 educacao <- educacao %>% mutate(cores = if_else(percentual>100,"red","blue"))
 
@@ -376,22 +398,23 @@ p <- ggplot(educacao, aes(y=percentual, color = cores)) +
   # Uma linha de tendência para os pontos de cor vermelha e outra linha de tendência para os pontos de cor azul  
     geom_smooth( method = "loess", inherit.aes =FALSE,aes(x=mes, y=percentual), color = "gray" )+
   # inherit.aes =FALSE para nao herdar aes do geoms anteriores. Caso contrário a linha teria duas cores
-    geom_line(data = educacao %>% filter (ano == max(ano) ),  inherit.aes =TRUE, aes(x=month(as.Date(date)), y=percentual))+ 
+    geom_line(data = educacao %>% filter (ano == max(ano) ),  inherit.aes =FALSE, aes(x=month(as.Date(date)), y=percentual))+ 
   
    # definir informação dos eixos
     labs( x = "mês",
-          y = "%")+ tema+ 
+          y = "%")+
+   tema+ 
   # escala de cor. Os levels são definidos na coluna cores da df_limites.
     scale_color_manual(breaks = levels(educacao$cores),
                         values=c("red", "blue"))+
-  ggtitle("Percentual mínimo de despesa com Educação")+
+  ggtitle("Percentual mínimo de despesa com Saúde")+
   # optei por esconder a legenda (showlegend = FALSE)
-geom_text(data = educacao %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = ano))
+geom_label_repel(data = educacao %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = paste0(round(percentual,1),"%")), size = 10)
 # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
 p
 ```
 
-## Saúde
+## Mínimo Constitucional de Gasto com Saúde
 
 ```{r}
 saude <- read_excel("saude.xlsx")
@@ -430,7 +453,7 @@ p <- ggplot(saude, aes(y=percentual, color = cores)) +
                         values=c("red", "blue"))+
   ggtitle("Percentual mínimo de despesa com Saúde")+
   # optei por esconder a legenda (showlegend = FALSE)
-geom_label_repel(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = paste0(round(percentual,1),"%")))
+geom_label_repel(data = saude %>% filter (date == max(date)), aes(x=mes, y=percentual+3.5, label = paste0(round(percentual,1),"%")), size = 10)
 # (p <- ggplotly(p))%>% layout(showlegend = FALSE)
 p
 ```
@@ -506,16 +529,6 @@ seguridade %>% filter(item %!in% c(str_subset(item, "Total"))) %>% group_by(item
 
 
 
-```{r}
-plot_geral(rcl)+
-    theme(plot.title=element_text(size=40,hjust = 0.5 ),
-          # axis.text = element_text(size = 20),
-          axis.text.x = element_text(size=25),
-          axis.title.y=element_blank(),
-          axis.text.y=element_text(size=25),
-          axis.ticks.y=element_blank(),
-          legend.position = "none")
-```
 
 
 
