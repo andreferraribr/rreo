@@ -4,16 +4,16 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 
-options("scipen"=-100, "digits"=4, locale = locale(decimal_mark = ",", encoding = "latin1"))
-options(OutDec=",")
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+
+options(OutDec=",", scipen = 999)
 ```
 
 
 ```{r}
 library(flexdashboard)
-library(shiny)
+# library(shiny)
 library(tidyverse)
 library(readxl)
 library(DT)
@@ -24,6 +24,73 @@ library(scales)
 library(ggrepel)
 library(forcats)
 library(writexl)
+library(janitor)
+```
+
+
+```{r}
+tabela = function (df,coluna = NULL) {
+      datatable((df)%>%
+  # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
+  adorn_totals("row") ,
+      filter = 'top',          
+      extensions = 'Buttons',
+      options = list( 
+                  # order = list (df[(length(df))], 'desc'),
+                  dom = "Blfrtip",
+                  buttons = 
+                    list("copy", list(
+                      extend = "collection",
+                      buttons = c("csv", "excel", "pdf"),
+                      text = "Download" ) ),
+                  lengthMenu = list( c(-1, 5, 10,20),
+                                     c( "tudo",5, 10, 20)),
+                  pageLength = -1 )
+      )%>%
+  formatRound(
+  # formatar apenas as colunas numericas.
+  # sapply para identificar as colunas numericas e combinar com o parametro COLUNA
+    # ((ncol(df %>% select_if(is.character))+1):(ncol(df )+1)),
+    # http://datamining.togaware.com/survivor/Remove_Non_Numeric.html
+    (c(colnames(df[,sapply(df, is.numeric)]), coluna)),
+  digits = 2,
+  interval = 3,
+  mark = ",",
+  dec.mark = getOption("OutDec")
+)
+}
+
+tabela_reais = function (df,coluna = NULL) {
+      datatable((df)%>%
+  # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
+  adorn_totals("row") ,
+      filter = 'top', 
+      rownames = FALSE,
+      extensions = 'Buttons',
+      options = list( 
+                  # order = list (df[(length(df))], 'desc'),
+                  dom = "Blfrtip",
+                  buttons = 
+                    list("copy", list(
+                      extend = "collection",
+                      buttons = c("csv", "excel", "pdf"),
+                      text = "Download" ) ),
+                  lengthMenu = list( c(-1, 5, 10,20),
+                                     c( "tudo",5, 10, 20)),
+                  pageLength = -1 )
+      )%>%
+  formatRound(
+  # formatar apenas as colunas numericas.
+  # sapply para identificar as colunas numericas e combinar com o parametro COLUNA
+    # ((ncol(df %>% select_if(is.character))+1):(ncol(df )+1)),
+    # http://datamining.togaware.com/survivor/Remove_Non_Numeric.html
+    (c(colnames(df[,sapply(df, is.numeric)]), coluna)),
+  digits = 2,
+  interval = 3,
+  mark = ".",
+  dec.mark = ","
+) 
+}
 ```
 
 
@@ -37,20 +104,78 @@ library(writexl)
 
 
 
-teste <- as.data.frame(  read.fortran(list.files(pattern="].TXT"),c("A15","A40","A21","A1")))
-teste <- head(teste,-1)
+balancete_siafi <- as.data.frame(  read.fortran("BALANCETE.TXT",c("A15","A40","A21","A1")))
+balancete_siafi <- head(balancete_siafi,-1)
 
-teste <- tail(teste,-21)
+balancete_siafi <- tail(balancete_siafi,-21)
 
-names(teste) <- c("conta_id","conta","saldo","tipo_saldo")
+names(balancete_siafi) <- c("conta_id_siafi","conta_siafi","saldo_siafi","tipo_saldo")
 # https://www.geeksforgeeks.org/read-fixed-width-text-file-in-r/
 
 
-write.csv(teste,"teste.csv")
+balancete_siafi <- balancete_siafi %>% mutate(conta_id = as.numeric( str_replace_all(balancete_siafi$conta_id_siafi, "[^[:alnum:]]", "")))
 
- teste <- read_csv("teste.csv", col_types = cols(conta_id = col_character()), 
+write.csv(balancete_siafi,"teste.csv")
+
+ balancete_siafi <- read_csv("teste.csv", col_types = cols(conta_id = col_character()),
      locale = locale(decimal_mark = ",", encoding = "latin1"))
-datatable(teste)
+ 
+ balancete_siafi <-balancete_siafi %>% mutate(classe = str_sub(conta_id_siafi,1L,1L))
+ 
+ balancete_siafi <-balancete_siafi %>% mutate(tipo_operacao = case_when(
+   classe %in% c("1","3","5","7") & tipo_saldo == "c" ~ -1,
+   classe %in% c("2","4","6","8") & tipo_saldo == "D" ~ -1,
+   TRUE ~ 1
+ ))
+ 
+# datatable(balancete_siafi)
+
+```
+```{r}
+balancete_tg <- read_excel("BALANCETE.xlsx")
+
+names(balancete_tg) <- c("conta_id_tg","conta_tg","saldo_tg")
+
+# balancete_tg <- balancete_tg %>% mutate(id = str_c(classe_1_id,".",classe_2_id))
+
+# datatable(balancete_tg)
+
+
+```
+
+
+```{r}
+
+
+siafi_tg <- left_join(balancete_siafi,balancete_tg,  c("conta_id_siafi"="conta_id_tg"))
+
+siafi_tg <- siafi_tg %>% mutate(diferenca = (saldo_siafi - abs(saldo_tg) ))
+
+
+# datatable( siafi_tg %>%  select( conta_id, conta_siafi, saldo_siafi, conta_tg,saldo_tg, diferenca))%>%
+#                                         formatCurrency(c( "saldo_siafi" , "saldo_tg"    ,"diferenca"  ),
+#                                         'R$', 
+#                                        digits = 2,
+#                                        interval = 3,
+#                                        mark = ".",
+#                                        dec.mark = ",")
+
+
+batimento <- ( siafi_tg %>%  select( conta_id, conta_siafi, saldo_siafi,tipo_saldo,  conta_tg,saldo_tg, diferenca))
+# datatable(batimento) %>% 
+#       
+#   formatRound(c( "saldo_siafi" , "saldo_tg"    ,"diferenca"  ),
+#                                          
+#                                        digits = 2,
+#                                        interval = 3,
+#                                        mark = ".",
+#                                        dec.mark = ",")
+
+tabela_reais(batimento)
+
+# write_xlsx(batimento,"batimento.xlsx")
+
+
 
 ```
 
