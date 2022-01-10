@@ -1,0 +1,56 @@
+---
+title: "balancete"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+options("scipen"=-100, "digits"=4, locale = locale(decimal_mark = ",", encoding = "latin1"))
+options(OutDec=",")
+```
+
+
+```{r}
+library(flexdashboard)
+library(shiny)
+library(tidyverse)
+library(readxl)
+library(DT)
+library(plotly)
+library(lubridate)
+library(RcppRoll)
+library(scales)
+library(ggrepel)
+library(forcats)
+library(writexl)
+```
+
+
+
+```{r}
+# names(balancete_siafi)[1] <- "dados"
+# 
+# balancete_siafi <- head(balancete_siafi,-1)
+# 
+# write_csv(balancete_siafi, "balancete_siafi.txt")
+
+
+
+teste <- as.data.frame(  read.fortran(list.files(pattern="].TXT"),c("A15","A40","A21","A1")))
+teste <- head(teste,-1)
+
+teste <- tail(teste,-21)
+
+names(teste) <- c("conta_id","conta","saldo","tipo_saldo")
+# https://www.geeksforgeeks.org/read-fixed-width-text-file-in-r/
+
+
+write.csv(teste,"teste.csv")
+
+ teste <- read_csv("teste.csv", col_types = cols(conta_id = col_character()), 
+     locale = locale(decimal_mark = ",", encoding = "latin1"))
+datatable(teste)
+
+```
+
