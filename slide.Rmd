@@ -10,11 +10,16 @@ output:
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
-knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+
+options(OutDec=",", scipen = 999)
+
+# https://kbroman.org/knitr_knutshell/pages/Rmarkdown.html
+knitr::opts_chunk$set(fig.width=33, fig.height=12,
+                      echo=FALSE, warning=FALSE, message=FALSE)
 ```
 
 
-```{r libraries, echo=FALSE}
+```{r libraries, include=FALSE}
 library(flexdashboard)
 library(shiny)
 library(tidyverse)
@@ -33,12 +38,6 @@ library(forcats)
 '%!in%' <- Negate('%in%')
 ```
 
-```{r global-options, include=FALSE}
-
-# https://kbroman.org/knitr_knutshell/pages/Rmarkdown.html
-knitr::opts_chunk$set(fig.width=33, fig.height=12,
-                      echo=FALSE, warning=FALSE, message=FALSE)
-```
 
 
 
@@ -71,7 +70,7 @@ plot_rolling = function(df){
   
   geom_point(data = df%>% filter (mes %in% c(max(mes),max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado),size =5)+
     
-   geom_label_repel (size = 7, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+   geom_label_repel (size = 7, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,1), big.mark = ".", decimal.mark = ",", nsmall = 1), " (",month(mes,label = TRUE) ,")")))+
     
   
     
@@ -201,10 +200,29 @@ previ <- previ%>% filter(cores %in% c("blue","red") )
 ```
 
 
+```{r,rgps}
+previ <- read_excel("previ.xlsx")
+
+names(previ)[1] <- "mes"
+
+previ <- previ  %>% mutate (receita =rowSums( previ[,startsWith(names(previ),"Movimento R")&endsWith(names(previ),"Civis")]), despesa  =rowSums( previ[,startsWith(names(previ),"Movimento D")&endsWith(names(previ),"Civis")]), resultado = receita - despesa)
+
+previ2 <- previ  %>% select(ends_with("Meses"))
+
+# datatable(previ)
+# # https://itsalocke.com/blog/understanding-rolling-calculations-in-r/
+previ <- previ %>% mutate(acumulado = roll_sum(resultado,12, fill=NA, align="right")/1000000000)
+
+previ <- previ %>% mutate(cores = if_else(acumulado>0,"blue","red"))
+
+
+previ <- previ%>% filter(cores %in% c("blue","red") )
+```
 
 
 ```{r, plot previ, fig.width = 33, fig.height= 12}
 plot_rolling(previ)
+
 ```
 
 
@@ -308,7 +326,7 @@ disponibilidades <- disponibilidades %>%
   mutate(item = fct_reorder(item, desc(saldo)))
 
 # rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
-disponibilidades <- disponibilidades %>% mutate (mês = ymd (mês)) 
+disponibilidades <- disponibilidades %>% mutate (mês = ymd (mês), saldo = saldo/1000000000) 
 
 
 ggplot(disponibilidades %>% filter(item %!in% c ("TOTAL DE RECURSOS VINCULADOS (II)","Total de Disponibilidades (Ordinárias e Vinculadas)","TOTAL DE RECURSOS VINCULADOS (II)" )) ,aes(x = (as.Date(mês)),y = saldo, fill = item) ) + 
@@ -317,7 +335,7 @@ ggplot(disponibilidades %>% filter(item %!in% c ("TOTAL DE RECURSOS VINCULADOS (
   # plotar o point da UF selecionada
     # geom_label(label = rcl %>% filter (mês== max(mês)) %>% summarise(acumulado=acumulado))+
     # 
-     geom_label_repel(data = disponibilidades %>% filter (item %!in% c ("TOTAL DE RECURSOS VINCULADOS (II)","Total de Disponibilidades (Ordinárias e Vinculadas)","TOTAL DE RECURSOS VINCULADOS (II)" ),mês %in% c(max(mês))), aes(x=as.Date(mês), y=saldo,label=paste0( item, " ",prettyNum(round(saldo/1000000000,0), big.mark = ".", decimal.mark = ",") )), size = 10)+
+     geom_label_repel(data = disponibilidades %>% filter (item %!in% c ("TOTAL DE RECURSOS VINCULADOS (II)","Total de Disponibilidades (Ordinárias e Vinculadas)","TOTAL DE RECURSOS VINCULADOS (II)" ),mês %in% c(max(mês))), aes(x=as.Date(mês), y=saldo,label=paste0( item, " ",prettyNum(round(saldo,0), big.mark = ".", decimal.mark = ",") )), size = 10)+
  # geom_point(data = rp%>% filter (mês %in% c(max(mês))), aes(x=as.Date(mês), y=saldo))+
  
   ggtitle(paste0("DISPONIBILIDADES (posição: ",(month(max(as.Date(disponibilidades$mês)), label=TRUE)), "/",(year(max(as.Date(disponibilidades$mês)))),")" ))+

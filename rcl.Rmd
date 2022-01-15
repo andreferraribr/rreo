@@ -1,0 +1,125 @@
+---
+title: "rcl"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+
+options(OutDec=",", scipen = 999)
+```
+
+
+```{r, pacotes}
+library(flexdashboard)
+# library(shiny)
+library(tidyverse)
+library(readxl)
+library(DT)
+library(plotly)
+library(lubridate)
+library(RcppRoll)
+library(scales)
+library(ggrepel)
+library(forcats)
+library(writexl)
+library(janitor)
+```
+
+
+```{r, funcoes para formata tabelas}
+tabela = function (df,coluna = NULL) {
+      datatable((df)%>%
+  # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
+  adorn_totals("row") ,
+      filter = 'top',          
+      extensions = 'Buttons',
+      options = list( 
+                  # order = list (df[(length(df))], 'desc'),
+                  dom = "Blfrtip",
+                  buttons = 
+                    list("copy", list(
+                      extend = "collection",
+                      buttons = c("csv", "excel", "pdf"),
+                      text = "Download" ) ),
+                  lengthMenu = list( c(-1, 5, 10,20),
+                                     c( "tudo",5, 10, 20)),
+                  pageLength = -1 )
+      )%>%
+  formatRound(
+  # formatar apenas as colunas numericas.
+  # sapply para identificar as colunas numericas e combinar com o parametro COLUNA
+    # ((ncol(df %>% select_if(is.character))+1):(ncol(df )+1)),
+    # http://datamining.togaware.com/survivor/Remove_Non_Numeric.html
+    (c(colnames(df[,sapply(df, is.numeric)]), coluna)),
+  digits = 2,
+  interval = 3,
+  mark = ",",
+  dec.mark = getOption("OutDec")
+)
+}
+
+tabela_reais = function (df,coluna = NULL) {
+      datatable((df)%>%
+  # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
+  adorn_totals("row") ,
+      filter = 'top', 
+      rownames = FALSE,
+      extensions = 'Buttons',
+      options = list( 
+                  # order = list (df[(length(df))], 'desc'),
+                  dom = "Blfrtip",
+                  buttons = 
+                    list("copy", list(
+                      extend = "collection",
+                      buttons = c("csv", "excel", "pdf"),
+                      text = "Download" ) ),
+                  lengthMenu = list( c(-1, 5, 10,20),
+                                     c( "tudo",5, 10, 20)),
+                  pageLength = -1 )
+      )%>%
+  formatRound(
+  # formatar apenas as colunas numericas.
+  # sapply para identificar as colunas numericas e combinar com o parametro COLUNA
+    # ((ncol(df %>% select_if(is.character))+1):(ncol(df )+1)),
+    # http://datamining.togaware.com/survivor/Remove_Non_Numeric.html
+    (c(colnames(df[,sapply(df, is.numeric)]), coluna)),
+  digits = 2,
+  interval = 3,
+  mark = ".",
+  dec.mark = ","
+) 
+}
+```
+
+
+```{r}
+fatores <- read_excel("r_anexo_rcl.xlsm", 
+    sheet = "reordenar_fatores")
+
+
+r_anexo_rcl <- read_excel("r_anexo_rcl.xlsm", 
+    sheet = "Fonte 1", skip = 5)
+
+names(r_anexo_rcl)[1] <- "item"
+```
+
+```{r}
+
+# https://www.datacamp.com/community/tutorials/sorting-in-r?utm_source=adwords_ppc&utm_medium=cpc&utm_campaignid=14989519638&utm_adgroupid=127836677279&utm_device=c&utm_keyword=&utm_matchtype=&utm_network=g&utm_adpostion=&utm_creative=278443377092&utm_targetid=aud-299261629574:dsa-429603003980&utm_loc_interest_ms=&utm_loc_physical_ms=1001706&gclid=CjwKCAiA_omPBhBBEiwAcg7smWTUVHMHIg1vMlDM39USKhSvaSTG0SiiVeJABriL-oc6EMl41ClqHRoCthkQAvD_BwE
+
+r_anexo_rcl <- head(r_anexo_rcl,-1)
+
+r_anexo_rcl <- tail(r_anexo_rcl,-1)
+
+
+r_anexo_rcl[,2:12] <-  lapply(r_anexo_rcl[,2:12],as.numeric)
+
+r_anexo_rcl$item <- factor(fatores$tg, levels = fatores$anexo)
+order(factor(r_anexo_rcl$item))
+
+
+r_anexo_rcl <- (r_anexo_rcl[order(factor(r_anexo_rcl$item)),])
+```
+

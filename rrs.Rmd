@@ -100,7 +100,7 @@ ggplot(saude, aes(x=mes, y=percentual, colour = year(date))) +
   
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
  library(readr)
 anexo_1_ate_o_mes <- read_csv("anexo_1_ate_o_mes.csv", 
     locale = locale(decimal_mark = ","), 
@@ -210,7 +210,7 @@ ggplot(previ , aes(x = (as.Date(date)),y = acumulado)) +
 
 
 
-```{r,fig.width = 10, fig.height= 4}
+```{r}
 rcl <- read_excel("rcl.xlsx")
 
 rcl <- rcl %>% mutate(acumulado = roll_sum(`RECEITA CORRENTE LÍQUIDA (III) = (I - II)`,12, fill=NA, align="right")/1000000)
@@ -236,7 +236,7 @@ ggplot(rcl , aes(x = (as.Date(item)),y = acumulado)) +
 # rcl %>% filter(startsWith(item,"RECEITA")) %>% pivot_longer(cols = everything())
 ```
 ```{r}
-educacao <- read_excel("educacao.xlsx")
+educacao <- read_excel("saude.xlsx")
 
 educacao <- educacao %>% mutate (percentual = 100*executado/mínimo, mes = month(date, label = TRUE), ano = year(date))
 
@@ -276,34 +276,34 @@ p
 
 # https://dominicroye.github.io/en/2019/import-excel-sheets-with-r/
 
-read_excel("Receita_Contribuicao.xlsx")
-
-path <- "Receita_Contribuicao.xlsx"
-
-path %>%
-  excel_sheets()
-
-path <- "Receita_Contribuicao.xlsx"
-Receita_Contribuicao <- path %>%
-        excel_sheets() %>%
-        set_names() %>%
-       map_df(read_excel,
-           path = path,skip = 8,
-           .id = "ano")
-
-Receita_Contribuicao <- Receita_Contribuicao[ ,1:15]
-
-names(Receita_Contribuicao)[2] <- "receita"
-
-Receita_Contribuicao <- Receita_Contribuicao %>%  pivot_longer(where(is.double), names_to = "mes", values_to = "valor")
-
-Receita_Contribuicao <- left_join(Receita_Contribuicao, meses) %>% mutate(data = paste0(ano,"-",mes_cod,"-01"))
-
+# read_excel("Receita_Contribuicao.xlsx")
+# 
+# path <- "Receita_Contribuicao.xlsx"
+# 
+# path %>%
+#   excel_sheets()
+# 
+# path <- "Receita_Contribuicao.xlsx"
+# Receita_Contribuicao <- path %>%
+#         excel_sheets() %>%
+#         set_names() %>%
+#        map_df(read_excel,
+#            path = path,skip = 8,
+#            .id = "ano")
+# 
+# Receita_Contribuicao <- Receita_Contribuicao[ ,1:15]
+# 
+# names(Receita_Contribuicao)[2] <- "receita"
+# 
+# Receita_Contribuicao <- Receita_Contribuicao %>%  pivot_longer(where(is.double), names_to = "mes", values_to = "valor")
+# 
+# Receita_Contribuicao <- left_join(Receita_Contribuicao, meses) %>% mutate(data = paste0(ano,"-",mes_cod,"-01"))
+# 
 
 
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 primario <- read_excel("primario.xlsx")
 
 names(primario)[1] <- "mes"
@@ -325,7 +325,7 @@ ggplot(primario %>% filter(rec_cod %in% c("3.","4.")), aes(y = valor,x=mes, fill
 
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 teste <- primario  %>% filter(rec_cod %in% c("3.","4.")) %>%  group_by(rec_nome,mes) %>% summarise(valor = sum(valor))
 
 teste <- ( pivot_wider(teste, names_from = "rec_nome", values_from = valor) )

@@ -11,7 +11,7 @@ options(OutDec=",", scipen = 999)
 ```
 
 
-```{r}
+```{r, pacotes}
 library(flexdashboard)
 # library(shiny)
 library(tidyverse)
@@ -28,7 +28,7 @@ library(janitor)
 ```
 
 
-```{r}
+```{r, funcoes para formata tabelas}
 tabela = function (df,coluna = NULL) {
       datatable((df)%>%
   # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
@@ -105,20 +105,32 @@ tabela_reais = function (df,coluna = NULL) {
 
 
 balancete_siafi <- as.data.frame(  read.fortran("BALANCETE.TXT",c("A15","A40","A21","A1")))
+
+# selecionar apenas os registros (eliminar a última linha e as 21 primeiras linhas)
+
 balancete_siafi <- head(balancete_siafi,-1)
 
 balancete_siafi <- tail(balancete_siafi,-21)
 
+# renomear colunas
+
 names(balancete_siafi) <- c("conta_id_siafi","conta_siafi","saldo_siafi","tipo_saldo")
 # https://www.geeksforgeeks.org/read-fixed-width-text-file-in-r/
 
+# transformar em numérico a variável conta_id
 
 balancete_siafi <- balancete_siafi %>% mutate(conta_id = as.numeric( str_replace_all(balancete_siafi$conta_id_siafi, "[^[:alnum:]]", "")))
 
-write.csv(balancete_siafi,"teste.csv")
+balancete_siafi$conta_id <- type.convert(balancete_siafi$conta_id)
 
- balancete_siafi <- read_csv("teste.csv", col_types = cols(conta_id = col_character()),
-     locale = locale(decimal_mark = ",", encoding = "latin1"))
+
+balancete_siafi<-  balancete_siafi %>% mutate (saldo_siafi= as.numeric(saldo_siafi))
+
+
+# write.csv(balancete_siafi,"teste.csv")
+# 
+#  balancete_siafi <- read_csv("teste.csv", col_types = cols(conta_id = col_character()),
+#      locale = locale(decimal_mark = ",", encoding = "latin1"))
  
  balancete_siafi <-balancete_siafi %>% mutate(classe = str_sub(conta_id_siafi,1L,1L))
  
@@ -147,7 +159,7 @@ names(balancete_tg) <- c("conta_id_tg","conta_tg","saldo_tg")
 ```{r}
 
 
-siafi_tg <- left_join(balancete_siafi,balancete_tg,  c("conta_id_siafi"="conta_id_tg"))
+siafi_tg <- left_join(balancete_siafi,balancete_tg,  c("conta_id"="conta_id_tg"))
 
 siafi_tg <- siafi_tg %>% mutate(diferenca = (saldo_siafi - abs(saldo_tg) ))
 
@@ -175,7 +187,7 @@ tabela_reais(batimento)
 
 # write_xlsx(batimento,"batimento.xlsx")
 
-
+tabela_reais(batimento %>% filter(diferenca > 10 |  diferenca < 10))
 
 ```
 
