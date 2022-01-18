@@ -13,7 +13,7 @@ options(OutDec=",", scipen = 999)
 
 ```{r, pacotes}
 library(flexdashboard)
-# library(shiny)
+library(shiny)
 library(tidyverse)
 library(readxl)
 library(DT)
@@ -25,6 +25,7 @@ library(ggrepel)
 library(forcats)
 library(writexl)
 library(janitor)
+library(openxlsx)
 ```
 
 
@@ -121,5 +122,88 @@ order(factor(r_anexo_rcl$item))
 
 
 r_anexo_rcl <- (r_anexo_rcl[order(factor(r_anexo_rcl$item)),])
+```
+```{r}
+RREO_R_RCL <- read_excel("RREO_R_RCL.xlsx", 
+    skip = 8)
+names(RREO_R_RCL) <- c("mes", "item","saldo")
+
+data_atualizacao_rreo <- tail(RREO_R_RCL$mes,1)
+
+RREO_R_RCL <- head(RREO_R_RCL,-1)
+
+RREO_R_RCL <- RREO_R_RCL %>% mutate(mes = parse_date_time(mes,"ym"))
+
+RREO_R_RCL <- RREO_R_RCL %>% mutate(data = paste0( month(mes, label = TRUE), "/",year(mes) ))
+
+
+rcl_tabela <- RREO_R_RCL %>% select(item, data, saldo) %>% pivot_wider(names_from = data, values_from = saldo)
+
+rcl_tabela$item <- factor(fatores$tg, levels = fatores$anexo)
+order(factor(rcl_tabela$item))
+
+
+rcl_tabela <- (rcl_tabela[order(factor(rcl_tabela$item)),])
+
+datatable(rcl_tabela)
+
+
+wb_rcl <- createWorkbook("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexos2.xlsx")
+
+addWorksheet(wb_rcl, "rcl_dados")
+
+writeData(wb_rcl,"rcl_dados",r_anexo_rcl)
+ 
+saveWorkbook(wb_rcl, file = "wb_rcl.xlsx" , overwrite = TRUE)
+
+write.xlsx(rcl_tabela,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexos2.xlsx", sheetName = "rcl_dados", 
+           append=TRUE)
+
+```
+
+```{r}
+library(openxlsx)
+wb <- loadWorkbook("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexo.xlsx")
+# addWorksheet(wb,"Sheet2")
+DF <- rcl_tabela
+writeData(wb,"Sheet2",DF)
+saveWorkbook(wb,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexo.xlsx",overwrite = TRUE)
+```
+
+
+```{r}
+anexo <- read_excel("r_anexo_rcl.xlsm", 
+    sheet = "Fonte 1")
+```
+
+```{r eval=FALSE, include=FALSE}
+wb_rcl <- createWorkbook()
+
+addWorksheet(wb_rcl, "rcl")
+
+writeData(wb_rcl,"rcl",r_anexo_rcl)
+
+saveWorkbook(wb_rcl, file = "wb_rcl.xlsx" , overwrite = TRUE)
+
+writeData()
+
+write.xlsx(r_anexo_rcl,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/rcl.xlsx")
+
+write.xlsx(mtcars, file="myworkbook.xlsx", sheetName="MTCARS", 
+           append=TRUE)
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+wb_rcl <- createWorkbook("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/wb_anexos.xlsx")
+
+addWorksheet(wb_rcl, "rcl_dados")
+
+writeData(wb_rcl,"rcl_dados",r_anexo_rcl)
+
+saveWorkbook(wb_rcl, file = "C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/wb_anexos.xlsx" , overwrite = TRUE)
+
+
 ```
 
