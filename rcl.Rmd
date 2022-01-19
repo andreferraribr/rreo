@@ -124,6 +124,15 @@ order(factor(r_anexo_rcl$item))
 r_anexo_rcl <- (r_anexo_rcl[order(factor(r_anexo_rcl$item)),])
 ```
 ```{r}
+
+previsao_rcl <- read_excel("Anexo 3 - Previsão Atualizada do Exercício - 2021.xlsx", 
+    skip = 8)
+names(previsao_rcl) <- c("item", "previsao_receita","dotacao")
+
+data_atualizacao_rreo <- tail(previsao_rcl$item,1)
+
+previsao_rcl <- head(previsao_rcl,-1)
+
 RREO_R_RCL <- read_excel("RREO_R_RCL.xlsx", 
     skip = 8)
 names(RREO_R_RCL) <- c("mes", "item","saldo")
@@ -145,28 +154,59 @@ order(factor(rcl_tabela$item))
 
 rcl_tabela <- (rcl_tabela[order(factor(rcl_tabela$item)),])
 
+rcl_tabela <-  left_join(rcl_tabela,previsao_rcl %>% select("item","previsao_receita"))
+
+# https://community.rstudio.com/t/apply-rowsums-to-selected-columns/94794
+
+rcl_tabela <- rcl_tabela%>%rowwise() %>%mutate(total = sum(c_across(2:13)))
+
 datatable(rcl_tabela)
 
 
-wb_rcl <- createWorkbook("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexos2.xlsx")
+# wb_rcl <- createWorkbook("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexos2.xlsx")
+# 
+# addWorksheet(wb_rcl, "rcl_dados")
+# 
+# writeData(wb_rcl,"rcl_dados",r_anexo_rcl)
+#  
+# saveWorkbook(wb_rcl, file = "wb_rcl.xlsx" , overwrite = TRUE)
+# 
+# write.xlsx(rcl_tabela,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexos2.xlsx", sheetName = "rcl_dados", 
+#            append=TRUE)
 
-addWorksheet(wb_rcl, "rcl_dados")
+```
+```{r}
 
-writeData(wb_rcl,"rcl_dados",r_anexo_rcl)
- 
-saveWorkbook(wb_rcl, file = "wb_rcl.xlsx" , overwrite = TRUE)
+previsao_rcl <- read_excel("Anexo 3 - Previsão Atualizada do Exercício - 2021.xlsx", 
+    skip = 8)
+names(previsao_rcl) <- c("item", "previsao_receita","dotacao")
 
-write.xlsx(rcl_tabela,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexos2.xlsx", sheetName = "rcl_dados", 
-           append=TRUE)
+data_atualizacao_rreo <- tail(previsao_rcl$item,1)
+
+previsao_rcl <- head(previsao_rcl,-1)
+
+
+
+
+
+
+
+previsao_rcl <- (previsao_rcl[order(factor(previsao_rcl$item)),])
+
+datatable(previsao_rcl)
+
 
 ```
 
 ```{r}
+
+# https://community.rstudio.com/t/how-to-append-a-new-sheet-to-existing-workbook/90755
 library(openxlsx)
 wb <- loadWorkbook("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexo.xlsx")
-# addWorksheet(wb,"Sheet2")
+# addWorksheet(wb,"rcl_dados")
+# renameWorksheet(wb,"Sheet2","rcl_dados")
 DF <- rcl_tabela
-writeData(wb,"Sheet2",DF)
+writeData(wb,"rcl_dados",DF)
 saveWorkbook(wb,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexo.xlsx",overwrite = TRUE)
 ```
 
