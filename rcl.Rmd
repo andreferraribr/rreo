@@ -96,33 +96,41 @@ tabela_reais = function (df,coluna = NULL) {
 
 
 ```{r}
+
+# importar tabela com a ordem das linhas da RCL
 fatores <- read_excel("r_anexo_rcl.xlsm", 
     sheet = "reordenar_fatores")
 
-
+# importar relatorio do TG com dados da rcv
 r_anexo_rcl <- read_excel("r_anexo_rcl.xlsm", 
     sheet = "Fonte 1", skip = 5)
-
+# alterar o nome da coluna 1
 names(r_anexo_rcl)[1] <- "item"
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 # https://www.datacamp.com/community/tutorials/sorting-in-r?utm_source=adwords_ppc&utm_medium=cpc&utm_campaignid=14989519638&utm_adgroupid=127836677279&utm_device=c&utm_keyword=&utm_matchtype=&utm_network=g&utm_adpostion=&utm_creative=278443377092&utm_targetid=aud-299261629574:dsa-429603003980&utm_loc_interest_ms=&utm_loc_physical_ms=1001706&gclid=CjwKCAiA_omPBhBBEiwAcg7smWTUVHMHIg1vMlDM39USKhSvaSTG0SiiVeJABriL-oc6EMl41ClqHRoCthkQAvD_BwE
 
+# excluir a última linha (data dos dados do TG)
 r_anexo_rcl <- head(r_anexo_rcl,-1)
 
+# excluir a primeira linha (nome da métrica)
 r_anexo_rcl <- tail(r_anexo_rcl,-1)
 
-
+# transformar os valores em númericos
 r_anexo_rcl[,2:12] <-  lapply(r_anexo_rcl[,2:12],as.numeric)
 
-r_anexo_rcl$item <- factor(fatores$tg, levels = fatores$anexo)
-order(factor(r_anexo_rcl$item))
+# alterar a ordem das linhas para o padrão do anexo
+# r_anexo_rcl$item <- factor(fatores$tg, levels = fatores$anexo)
+# order(factor(r_anexo_rcl$item))
 
-
+# alterar a ordem das linhas para o padrão do anexo
 r_anexo_rcl <- (r_anexo_rcl[order(factor(r_anexo_rcl$item)),])
 ```
+
+
+
 ```{r}
 
 previsao_rcl <- read_excel("Anexo 3 - Previsão Atualizada do Exercício - 2021.xlsx", 
@@ -152,15 +160,32 @@ rcl_tabela$item <- factor(fatores$tg, levels = fatores$anexo)
 order(factor(rcl_tabela$item))
 
 
+
 rcl_tabela <- (rcl_tabela[order(factor(rcl_tabela$item)),])
-
-rcl_tabela <-  left_join(rcl_tabela,previsao_rcl %>% select("item","previsao_receita"))
-
-# https://community.rstudio.com/t/apply-rowsums-to-selected-columns/94794
 
 rcl_tabela <- rcl_tabela%>%rowwise() %>%mutate(total = sum(c_across(2:13)))
 
-datatable(rcl_tabela)
+rcl_tabela <-  left_join(rcl_tabela,previsao_rcl %>% select("item","previsao_receita"))
+
+
+
+tabela_reais(rcl_tabela)
+
+# https://community.rstudio.com/t/apply-rowsums-to-selected-columns/94794
+
+
+
+deducoes <- ( rcl_tabela %>% filter(item == "Deduções") %>% select(-item))
+
+rcl <- (rcl_tabela %>% filter(item == "RECEITAS CORRENTES (I)")%>% select(-item))
+
+rcl_liquida <- rcl-deducoes 
+
+item <- data_frame("item","rcl_liquida")
+
+(merge.data.frame(rcl_liquida,item))
+
+# https://www.rdocumentation.org/packages/openxlsx/versions/4.2.5/topics/writeFormula
 
 
 # wb_rcl <- createWorkbook("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexos2.xlsx")
@@ -211,7 +236,7 @@ saveWorkbook(wb,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Naciona
 ```
 
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 anexo <- read_excel("r_anexo_rcl.xlsm", 
     sheet = "Fonte 1")
 ```
@@ -243,6 +268,52 @@ addWorksheet(wb_rcl, "rcl_dados")
 writeData(wb_rcl,"rcl_dados",r_anexo_rcl)
 
 saveWorkbook(wb_rcl, file = "C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/wb_anexos.xlsx" , overwrite = TRUE)
+
+
+```
+
+
+```{r}
+tabela_4_dados <- read_excel("Tabela 4 - Disponibilidades e Fluxo - 2021.xlsx", 
+    skip = 4)
+
+
+disponibilidades_ano_fechado <- read_excel("disponibilidades_ano_fechado.xlsx")
+
+tabela_4_dados <-  left_join(tabela_4_dados,disponibilidades_ano_fechado, c("Tabela 4 - Disponibilidades e Fluxo - 2021"="ano_fechado")) %>% mutate_all(~replace(., is.na(.), 0))
+
+tabela_4_dados <- tabela_4_dados %>% mutate(disponibilidade_com_fluxo_real= `DISPONIBILIDADE DE CAIXA BRUTA EM 31/12/2020`+`Receitas (b)`- `Despesas (c)` )
+
+tabela_4_dados <- tabela_4_dados %>% mutate(demais_fluxo = disponibilidade_com_fluxo_real - `Disponibilidade Bruta - Lim. Saque (e)` )
+
+tabela_4_dados <- tabela_4_dados %>% mutate(disponibilidade_liquida_corrigida = `Disponibilidade Bruta - Lim. Saque (e)`- `RPP  de Exercícios Anteriores (f)`-`RPP do Exercício (f.1)`-`RPNP de Exercícios Anteriores (g)`-`Demais Obrigações (h)` )
+
+
+tabela_4_dados <- tabela_4_dados %>% relocate(demais_fluxo, .after = `Despesas (c)`)
+
+tabela_4_dados <- tabela_4_dados %>% relocate(disponibilidade_com_fluxo_real, .after = demais_fluxo)
+
+tabela_4_dados <- tabela_4_dados %>% relocate(disponibilidade_liquida_corrigida, .after = `Demais Obrigações (h)`)
+
+tabela_4_dados <- tabela_4_dados %>% relocate(`DISPONIBILIDADE DE CAIXA BRUTA EM 31/12/2020`, .before = `Receitas (b)`)
+
+DF <- tabela_4_dados
+
+writeData(wb,"tabela_4_dados",DF)
+saveWorkbook(wb,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexo.xlsx",overwrite = TRUE)
+
+
+
+tabela_4_exec_dados <- read_excel("Tabela 4 - Disponibilidades e Fluxo Executivo - 2021.xlsx", skip = 4)
+
+
+
+
+DF <- tabela_4_exec_dados
+writeData(wb,"tabela_4_exec_dados",DF)
+saveWorkbook(wb,"C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/Auto/anexo.xlsx",overwrite = TRUE)
+
+
 
 
 ```
