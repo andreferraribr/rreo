@@ -68,9 +68,9 @@ plot_rolling = function(df){
     # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
     # 
   
-  geom_point(data = df%>% filter (mes %in% c(max(mes),max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado),size =5)+
+  geom_point(data = df%>% filter (mes %in% c(max(mes),max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado),size =7)+
     
-   geom_label_repel (size = 7, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,1), big.mark = ".", decimal.mark = ",", nsmall = 1), " (",month(mes,label = TRUE) ,")")))+
+   geom_label_repel (size = 8, data = df%>% filter (mes %in% c(max(mes), max(mes)-years(1))), aes(x=as.Date(mes), y=acumulado,label=paste0( prettyNum(round(acumulado,1), big.mark = ".", decimal.mark = ",", nsmall = 1), " (",month(mes,label = TRUE) ,")")))+
     
   
     
@@ -136,7 +136,12 @@ dados = function(tg, depara){
 
 
 ```{r}
-rcl <- read_excel("RCL.xlsx")
+rcl <- read_excel("rcl_pbi.xlsx")
+
+names(rcl)[6] <- "rcl_liquida_mes"
+
+names(rcl)[1] <- "mes"
+
 
 rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000000)
 
@@ -178,7 +183,7 @@ ggplot(rcl,aes(x = (as.Date(mes)),y = acumulado) ) +
 
 
 
-## Demonstrativos do RGPS, do RPPS e dos Militares Inativos e Pensionistas (R$ bilhões)
+## Resultado do RGPS, do RPPS e dos Militares Inativos e Pensionistas (R$ bilhões)
 
 ```{r}
 previ <- read_excel("previ.xlsx")
@@ -382,6 +387,10 @@ ggplot(rp ,aes(x = (as.Date(mes)),y = a_pagar, fill = grupo) ) +
     scale_x_date(limits = c(as.Date ("2012-12-01"),as.Date(max(rp$mes))) ,breaks=date_breaks("1 year"),
       labels=date_format( "%Y"))
 
+```
+```{r rctn_rp}
+RP_RCTN_2021 <- read_excel("RP_RCTN_2021.xlsx", 
+    skip = 7)
 ```
 
 

@@ -119,12 +119,12 @@ names(balancete_siafi) <- c("conta_id_siafi","conta_siafi","saldo_siafi","tipo_s
 
 # transformar em numérico a variável conta_id
 
-balancete_siafi <- balancete_siafi %>% mutate(conta_id = as.numeric( str_replace_all(balancete_siafi$conta_id_siafi, "[^[:alnum:]]", "")))
+balancete_siafi <- balancete_siafi %>% mutate(conta_id = ( str_replace_all(balancete_siafi$conta_id_siafi, "[^[:alnum:]]", "")))
 
 balancete_siafi$conta_id <- type.convert(balancete_siafi$conta_id)
 
 
-balancete_siafi<-  balancete_siafi %>% mutate (saldo_siafi= as.numeric(saldo_siafi))
+# balancete_siafi<-  balancete_siafi %>% mutate (saldo_siafi= as.numeric(saldo_siafi))
 
 
 # write.csv(balancete_siafi,"teste.csv")
@@ -148,6 +148,8 @@ balancete_tg <- read_excel("BALANCETE.xlsx")
 
 names(balancete_tg) <- c("conta_id_tg","conta_tg","saldo_tg")
 
+balancete_tg <- balancete_tg %>% mutate(conta_id_tg = as.numeric(conta_id_tg))
+
 # balancete_tg <- balancete_tg %>% mutate(id = str_c(classe_1_id,".",classe_2_id))
 
 # datatable(balancete_tg)
@@ -161,7 +163,7 @@ names(balancete_tg) <- c("conta_id_tg","conta_tg","saldo_tg")
 
 siafi_tg <- left_join(balancete_siafi,balancete_tg,  c("conta_id"="conta_id_tg"))
 
-siafi_tg <- siafi_tg %>% mutate(diferenca = (saldo_siafi - abs(saldo_tg) ))
+siafi_tg <- siafi_tg %>% mutate(diferenca = (as.numeric(saldo_siafi) - abs(saldo_tg) ))
 
 
 # datatable( siafi_tg %>%  select( conta_id, conta_siafi, saldo_siafi, conta_tg,saldo_tg, diferenca))%>%

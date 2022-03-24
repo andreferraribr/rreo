@@ -42,6 +42,11 @@ dados = function(tg, depara){
 ```
 
 
+```{r negar %in%}
+# https://www.r-bloggers.com/the-notin-operator/
+'%!in%' <- Negate('%in%')
+```
+
 ```{r}
 rp <- dados("rp.xlsx","tg2r_rp.xlsx")%>% mutate(mes = paste0(ano,"-",mês,"-","01"))%>% 
   #  alterar NA por 0
@@ -53,7 +58,7 @@ rp <- rp %>% mutate (mes = ymd (mes))
 rp_acumulado <- rp %>% group_by(mes) %>% summarise(saldo_a_pagar= sum(a_pagar))
  
 
-rp <- rp %>% mutate (a_pagar = rpp + rpnp)
+rp <- rp %>% mutate (a_pagar = rpp + rpnp)%>%   mutate(acumulado = roll_sum(a_pagar,12, fill=NA, align="right"))
 
 # rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
 # rp_acumulado <- rp_acumulado %>% mutate (mes = ymd (mes)) 
@@ -87,8 +92,96 @@ ggplot(rp_acumulado,aes(x = (as.Date(mes)),y = acumulado) ) +
 
 
 
+```{r}
+
+
+rp <- dados("rp.xlsx","tg2r_rp.xlsx")%>% mutate(mes = paste0(ano,"-",mês,"-","01"))%>% mutate (a_pagar = rpp + rpnp)
+
+rp <- rp %>% mutate (mes = ymd (mes))
+
+
+rp_acumulado <- rp %>% group_by(mes) %>% summarise(saldo_a_pagar= sum(a_pagar))
+ 
+
+rp <- rp %>% mutate (a_pagar = rpp + rpnp)%>%   mutate(acumulado = roll_sum(a_pagar,12, fill=NA, align="right"))
+
+# rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
+# rp_acumulado <- rp_acumulado %>% mutate (mes = ymd (mes)) 
+rp_acumulado <- rp %>% group_by(mes) %>% summarise(a_pagar= sum(a_pagar)) %>%   mutate(acumulado = roll_sum(a_pagar,12, fill=NA, align="right"))
+
+
+ggplot(rp %>%  group_by(mes, grupo) %>% summarise(a_pagar=sum(a_pagar)),aes(x = (as.Date(mes)),y = a_pagar, fill = grupo) ) + 
+  
+  geom_col()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+    geom_label_repel(data = rp%>% filter (mes %in% c(max(mes))), aes(x=as.Date(mes), y=a_pagar,label=paste0( prettyNum(round(a_pagar/1000000000,0), big.mark = ".", decimal.mark = ","), " (",month(mes,label = TRUE) ,")")))+
+ # geom_point(data = rp%>% filter (mes %in% c(max(mes))), aes(x=as.Date(mes), y=a_pagar))+
+ 
+  ggtitle(paste0("rp (posição: ",(month(max(as.Date(rp$mes)), label=TRUE)), "/",(year(max(as.Date(rp$mes)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(axis.text.x = element_text(size=8),
+          axis.text.y = element_text(size=8),
+          legend.position = "none")+ 
+    scale_x_date(limits = c(as.Date ("2013-01-01"),as.Date(max(rp$mes))) ,breaks=date_breaks("1 year"),
+      labels=date_format( "%Y"))
+
+
+
+ ggsave("rp.png", width = 24, height = 9, units = "cm",  dpi = 1200)
+
+```
+
+```{r}
+rp <- dados("rp.xlsx","tg2r_rp.xlsx")%>% mutate(mes = paste0(ano,"-",mês,"-","01"))%>% 
+  #  alterar NA por 0
+  mutate_all(~replace(., is.na(.), 0))%>% mutate (a_pagar = rpp + rpnp)
+
+rp <- rp %>% mutate (mes = ymd (mes))
+
+
+rp_acumulado <- rp %>% group_by(mes) %>% summarise(saldo_a_pagar= sum(a_pagar))
+ 
+
+rp <- rp %>% mutate (a_pagar = rpp + rpnp)%>%   mutate(acumulado = roll_sum(a_pagar,12, fill=NA, align="right"))
+
+# rp <- rp %>% mutate(mes = paste0(ano,"-",mês,"-","01"))
+# rp_acumulado <- rp_acumulado %>% mutate (mes = ymd (mes)) 
+rp_ne_ano <- rp %>% group_by( ne_ano)  %>% summarise(a_pagar= sum(a_pagar))
+
+
+ggplot(rp_ne_ano,aes(  ne_ano, a_pagar), fill = ne_ano ) + 
+  
+  geom_col()+
+  # plotar o point da UF selecionada
+    # geom_label(label = rcl %>% filter (mes== max(mes)) %>% summarise(acumulado=acumulado))+
+    # 
+   
+  ggtitle(paste0("rp (posição: ",(month(max(as.Date(rp$mes)), label=TRUE)), "/",(year(max(as.Date(rp$mes)))),")" ))+
+    theme_classic() +
+    ylab("R$ bilhões") +
+    xlab("") +
+    theme(axis.text.x = element_text(size=8),
+          axis.text.y = element_text(size=8),
+          legend.position = "none")+ scale_colour_brewer()
+
+
+
+ ggsave("rp.png", width = 24, height = 9, units = "cm",  dpi = 1200)
+```
+
+
+
+
 ```{r,fig.width = 10, fig.height= 4}
-rcl <- read_excel("RCL.xlsx")
+rcl <- read_excel("rcl_pbi.xlsx")
+
+names(rcl)[6] <- "rcl_liquida_mes"
+
+names(rcl)[1] <- "mes"
 
 rcl <- rcl %>% mutate(acumulado = roll_sum(rcl_liquida_mes,12, fill=NA, align="right")/1000000)
 
