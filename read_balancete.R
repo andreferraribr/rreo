@@ -1,49 +1,110 @@
 library(vroom)
 library(tidyverse)
+library(janitor)
 
 options(encoding = "latin1")
 options(max.print=999999)
-fwf_sample <- readr_example("fwf-sample.txt")
-writeLines(read_lines("BALAN.txt"))
-
-# You can specify column positions in several ways:
-# 1. Guess based on position of empty columns
-read_fwf(fwf_sample, fwf_empty(fwf_sample, col_names = c("first", "last", "state", "ssn")))
-# 2. A vector of field widths
-read_fwf(fwf_sample, fwf_widths(c(20, 10, 12), c("name", "state", "ssn")))
-# 3. Paired vectors of start and end positions
-read_fwf(fwf_sample, fwf_positions(c(1, 30), c(20, 42), c("name", "ssn")))
-# 4. Named arguments with start and end positions
-read_fwf(fwf_sample, fwf_cols(name = c(1, 20), ssn = c(30, 42)))
-# 5. Named arguments with column widths
-read_fwf(fwf_sample, fwf_cols(name = 20, state = 10, ssn = 12))
 
 
 
 
-tt <- (readLines("BALAN.txt" ,encoding = "UFT-8"))
+balan_siafi <- (readLines("BALAN.txt" ,encoding = "UFT-8"))
 
-tt <- str_replace_all(tt,"\"","'")
+balan_siafi <- str_replace_all(balan_siafi,"\"","'")
 
-tt21 <- tail(tt,-21)
+balancete_clean <- tail(balan_siafi,-21)
 
-tt21 <- head(tt21, -1)
-
-
- (writeLines(tt21))
+balancete_clean <- head(balancete_clean, -1)
 
 
+writeLines(balancete_clean, "balancete_clean.txt")    
 
-sink(file = "texto.txt")
-(tt21)
-sink(file = NULL)
+balancete <- as.data.frame(  read.fortran("balancete_clean.txt",c("A15","A40","A21","A1")))
+write_csv2(balancete,"balancete.csv")
 
-aaa <- as.data.frame(tt21)
-balancete_siafi <- as.data.frame(  read.fortran("texto.txt",c("A8","A15","A40","A21","A1")))
+balancete <- balancete %>% mutate(valor = parse_number(V3, locale = locale(decimal_mark = ",", grouping_mark = ".")))
 
-write.csv2(balancete_siafi,"balancete.cvs")
+datatable(balancete) %>% formatCurrency(
+  
+  "valor",
+  currency = "R$ ",
+  interval = 3,
+  mark = ".",
+  digits = 2,
+  dec.mark = getOption("OutDec"),
+  before = TRUE,
+  zero.print = NULL,
+  rows = NULL
+)
 
-balancete <- read_delim("balancete.cvs", 
-                        delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", 
-                                                                            grouping_mark = ".", encoding = "latin1"), 
-                        trim_ws = TRUE)
+tabela_reais = function (df,coluna = NULL) {
+  datatable((df)%>%
+              # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
+              adorn_totals("row") ,
+            filter = 'top', 
+            rownames = FALSE,
+            extensions = 'Buttons',
+            options = list( 
+              # order = list (df[(length(df))], 'desc'),
+              dom = "Blfrtip",
+              buttons = 
+                list("copy", list(
+                  extend = "collection",
+                  buttons = c("csv", "excel", "pdf"),
+                  text = "Download" ) ),
+              lengthMenu = list( c(-1, 5, 10,20),
+                                 c( "tudo",5, 10, 20)),
+              pageLength = -1 )
+  )%>%
+    formatRound(
+      # formatar apenas as colunas numericas.
+      # sapply para identificar as colunas numericas e combinar com o parametro COLUNA
+      # ((ncol(df %>% select_if(is.character))+1):(ncol(df )+1)),
+      # http://datamining.togaware.com/survivor/Remove_Non_Numeric.html
+      (c(colnames(df[,sapply(df, is.numeric)]), coluna)),
+      digits = 2,
+      interval = 3,
+      mark = ".",
+      dec.mark = ","
+    ) 
+}
+
+
+
+# library(readr)
+# balancete_2 <- read_delim("balancete.csv", delim = ";", 
+#                   escape_double = FALSE, locale = locale(decimal_mark = ",", 
+#                                                          grouping_mark = "."), trim_ws = TRUE)
+
+
+# sink(file = "texto.txt")
+# (tt21)
+# sink(file = NULL)
+# 
+# aaa <- as.data.frame(tt21)
+# balancete_siafi <- as.data.frame(  read.fortran("texto.txt",c("A8","A15","A40","A21","A1")))
+# 
+# balancete_siafi <- as.data.frame(  read.fortran("texto.txt",c("A8","A15","A40","A21","A1")))
+# 
+# write.csv2(balancete_siafi,"balancete.cvs")
+# 
+# balancete <- read_delim("balancete.cvs", 
+#                         delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", 
+#                                                                             grouping_mark = ".", encoding = "latin1"), 
+#                         trim_ws = TRUE)
+# 
+# balancete <- read_delim("balancete_clean.txt", 
+#                         delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", 
+#                                                                             grouping_mark = ".", encoding = "latin1"), 
+#                         trim_ws = TRUE)
+# 
+# 
+# library(dplyr)
+# library(tidyr)
+# 
+# gg <- tt21 %>%
+#   data.frame(tt21 = .) %>%
+#   extract(tt21, c("x","y","z","w"), "^(\\a{15})(\\a{34})(\\a{21})(\\a{1})", remove = FALSE)
+# 
+# 
+# 
